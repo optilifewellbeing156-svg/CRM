@@ -41,7 +41,11 @@ export default function PurchasesPage() {
   const [deleteTarget, setDeleteTarget] = useState<Purchase | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const isAdmin = me?.role === "ADMIN" || me?.permissions?.includes("add-purchases");
+  const isSuperAdmin = me?.role === "SUPER_ADMIN";
+  const isAdmin = isSuperAdmin || me?.role === "ADMIN";
+  const canAdd = isAdmin || me?.permissions?.includes("add-purchases");
+  const canEdit = isAdmin || me?.permissions?.includes("edit-purchases");
+  const canDelete = isAdmin || me?.permissions?.includes("delete-purchases");
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -148,7 +152,7 @@ export default function PurchasesPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Purchases</h1>
-        {isAdmin && (
+        {canAdd && (
           <Button onClick={openAdd} className="flex items-center gap-2">
             <Plus size={16} /> Add Purchase
           </Button>
@@ -182,16 +186,18 @@ export default function PurchasesPage() {
                   <td className="px-4 py-3 text-gray-500">{p.reference ?? "—"}</td>
                   <td className="px-4 py-3 text-gray-500">{new Date(p.createdAt).toLocaleDateString("en-GB")}</td>
                   <td className="px-4 py-3">
-                    {isAdmin && (
-                      <div className="flex items-center gap-2 justify-end">
+                    <div className="flex items-center gap-2 justify-end">
+                      {canEdit && (
                         <button onClick={() => openEdit(p)} className="text-gray-400 hover:text-primary">
                           <Pencil size={15} />
                         </button>
+                      )}
+                      {canDelete && (
                         <button onClick={() => setDeleteTarget(p)} className="text-gray-400 hover:text-red-500">
                           <Trash2 size={15} />
                         </button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

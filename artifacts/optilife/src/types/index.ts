@@ -101,6 +101,8 @@ export const PERMISSIONS = [
   { key: "delete-orders", label: "Delete Orders", group: "Orders" },
   { key: "change-order-status", label: "Change Order Status", group: "Orders" },
   { key: "add-purchases", label: "Add Purchases", group: "Purchases" },
+  { key: "edit-purchases", label: "Edit Purchases", group: "Purchases" },
+  { key: "delete-purchases", label: "Delete Purchases", group: "Purchases" },
 ] as const;
 
 export type PermissionKey = typeof PERMISSIONS[number]["key"];
