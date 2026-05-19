@@ -4,10 +4,9 @@
   publish = "artifacts/optilife/dist/public"
 
 [build.environment]
-  NODE_VERSION  = "20"
-  NODE_ENV      = "production"
-  BASE_PATH     = "/"
-  PNPM_VERSION  = "9"
+  NODE_VERSION = "20"
+  PNPM_VERSION = "9"
+  BASE_PATH    = "/"
 
 # Proxy /api/* to your deployed API server (update URL after Railway deploy).
 [[redirects]]
