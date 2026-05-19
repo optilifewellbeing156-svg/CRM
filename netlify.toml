@@ -1,12 +1,13 @@
 [build]
   base    = "."
-  command = "npm install -g pnpm && pnpm install --no-frozen-lockfile && pnpm --filter @workspace/optilife build"
+  command = "pnpm install --no-frozen-lockfile && pnpm --filter @workspace/optilife build"
   publish = "artifacts/optilife/dist/public"
 
 [build.environment]
-  NODE_VERSION = "20"
-  NODE_ENV     = "production"
-  BASE_PATH    = "/"
+  NODE_VERSION  = "20"
+  NODE_ENV      = "production"
+  BASE_PATH     = "/"
+  PNPM_VERSION  = "9"
 
 # Proxy /api/* to your deployed API server (update URL after Railway deploy).
 [[redirects]]
