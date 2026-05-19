@@ -1,0 +1,23 @@
+[build]
+  base    = "artifacts/optilife"
+  command = "npm install -g pnpm && pnpm install --no-frozen-lockfile && pnpm build"
+  publish = "artifacts/optilife/dist/public"
+
+[build.environment]
+  NODE_VERSION = "20"
+  NODE_ENV     = "production"
+  BASE_PATH    = "/"
+
+# Proxy /api/* to your deployed API server.
+# Replace the placeholder URL below with your actual API server URL
+# (e.g. from Railway, Render, or Fly.io) after you deploy the backend.
+[[redirects]]
+  from   = "/api/*"
+  to     = "https://YOUR_API_SERVER_URL/api/:splat"
+  status = 200
+  force  = true
+
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
+  status = 200
