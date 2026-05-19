@@ -30,7 +30,10 @@ export default function CustomersPage() {
   const [historyLoading, setHistoryLoading] = useState(false);
 
   const isPrivileged = me?.role === "ADMIN" || me?.role === "SUPER_ADMIN";
-  const canManage = isPrivileged || me?.permissions?.includes("manage-customers");
+  const hasManage = isPrivileged || me?.permissions?.includes("manage-customers");
+  const canAdd = hasManage || me?.permissions?.includes("add-customers");
+  const canEdit = hasManage || me?.permissions?.includes("edit-customers");
+  const canDelete = hasManage || me?.permissions?.includes("delete-customers");
   const canViewCards = isPrivileged || me?.permissions?.includes("view-card-details");
   const canSetStatus = isPrivileged || me?.permissions?.includes("set-customer-status");
 
@@ -83,7 +86,7 @@ export default function CustomersPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
-        {canManage && (
+        {canAdd && (
           <Button onClick={() => { setEditing(undefined); setSlideOpen(true); }} className="flex items-center gap-2">
             <Plus size={16} /> Add Customer
           </Button>
@@ -150,15 +153,15 @@ export default function CustomersPage() {
                           {c.status === "dnc" ? <CheckCircle2 size={15} /> : <Ban size={15} />}
                         </button>
                       )}
-                      {canManage && (
-                        <>
-                          <button onClick={() => { setEditing(c); setSlideOpen(true); }} className="text-gray-400 hover:text-primary">
-                            <Pencil size={15} />
-                          </button>
-                          <button onClick={() => setDeleteTarget(c)} className="text-gray-400 hover:text-red-500">
-                            <Trash2 size={15} />
-                          </button>
-                        </>
+                      {canEdit && (
+                        <button onClick={() => { setEditing(c); setSlideOpen(true); }} className="text-gray-400 hover:text-primary">
+                          <Pencil size={15} />
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button onClick={() => setDeleteTarget(c)} className="text-gray-400 hover:text-red-500">
+                          <Trash2 size={15} />
+                        </button>
                       )}
                     </div>
                   </td>

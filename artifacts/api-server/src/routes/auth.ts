@@ -5,7 +5,7 @@ import { eq, sql } from "drizzle-orm";
 
 const ALL_PERMISSIONS = [
   "dashboard","products","purchases","customers","orders","sales-report",
-  "manage-products","edit-products","delete-products","change-stock","manage-customers","create-orders","edit-orders","delete-orders","add-purchases","edit-purchases","delete-purchases","change-order-status",
+  "manage-products","edit-products","delete-products","change-stock","manage-customers","add-customers","edit-customers","delete-customers","create-orders","edit-orders","delete-orders","add-purchases","edit-purchases","delete-purchases","change-order-status",
 ];
 import { signToken, comparePassword, hashPassword, COOKIE_NAME, COOKIE_MAX_AGE } from "../lib/auth";
 
