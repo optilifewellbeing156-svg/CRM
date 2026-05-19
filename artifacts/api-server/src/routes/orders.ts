@@ -50,13 +50,23 @@ router.post("/orders", requirePermission("create-orders"), async (req: AuthReque
       return;
     }
 
+    const customerRows = await db.select({ status: customersTable.status }).from(customersTable).where(eq(customersTable.id, customerId)).limit(1);
+    if (!customerRows[0]) {
+      res.status(400).json({ error: "Customer not found" });
+      return;
+    }
+    if (customerRows[0].status === "dnc") {
+      res.status(400).json({ error: "Cannot create an order for a DNC customer" });
+      return;
+    }
+
     const productIds: string[] = items.map((i: any) => i.productId);
 
     const order = await db.transaction(async (tx) => {
       // Lock product rows for the duration of this transaction to prevent
       // concurrent orders from double-spending the same stock.
       const lockedRows = await tx.execute(
-        sql`SELECT id, stock_quantity, name, selling_price FROM products WHERE id = ANY(${productIds}::text[]) FOR UPDATE`
+        sql`SELECT id, stock_quantity, name, selling_price FROM products WHERE id = ANY(ARRAY[${sql.join(productIds.map(id => sql`${id}`), sql`, `)}]) FOR UPDATE`
       );
       const productMap = new Map(
         (lockedRows.rows as any[]).map((p: any) => [

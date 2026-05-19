@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, FormEvent } from "react";
 import { useLocation } from "wouter";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Ban } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import type { Customer, Product } from "@/types";
 
@@ -70,6 +70,9 @@ export function OrderForm() {
     );
   }
 
+  const selectedCustomer = customers.find((c) => c.id === customerId);
+  const isDNC = selectedCustomer?.status === "dnc";
+
   const total = items.reduce((sum, item) => {
     const price = Number(item.price) || 0;
     return sum + price * item.quantity;
@@ -79,6 +82,7 @@ export function OrderForm() {
     e.preventDefault();
     setError("");
     if (!customerId) { setError("Please select a customer"); return; }
+    if (isDNC) { setError("Cannot create an order for a DNC customer"); return; }
     if (items.some((i) => !i.productId)) { setError("Please select a product for each line"); return; }
     if (items.some((i) => i.price === "" || Number(i.price) < 0)) {
       setError("Please enter a price for each product");
@@ -135,10 +139,15 @@ export function OrderForm() {
               .map((c) => (
                 <div
                   key={c.id}
-                  className={`px-3 py-2 text-sm cursor-pointer hover:bg-primary/10 ${c.id === customerId ? "bg-primary/10 font-medium" : ""}`}
+                  className={`px-3 py-2 text-sm cursor-pointer hover:bg-primary/10 flex items-center justify-between ${c.id === customerId ? "bg-primary/10 font-medium" : ""}`}
                   onMouseDown={(e) => { e.preventDefault(); setCustomerId(c.id); setCustomerSearch(""); setCustomerOpen(false); }}
                 >
-                  {c.name}
+                  <span>{c.name}</span>
+                  {c.status === "dnc" && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-600 ml-2">
+                      <Ban size={10} /> DNC
+                    </span>
+                  )}
                 </div>
               ))}
             {customers.filter((c) => c.name.toLowerCase().includes(customerSearch.toLowerCase())).length === 0 && (
@@ -147,6 +156,12 @@ export function OrderForm() {
           </div>
         )}
         <input type="hidden" value={customerId} required />
+        {isDNC && (
+          <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 font-medium">
+            <Ban size={15} className="shrink-0" />
+            This customer is on the Do Not Contact list — orders cannot be created.
+          </div>
+        )}
       </div>
 
       <div>
@@ -278,7 +293,7 @@ export function OrderForm() {
       </div>
 
       {error && <p className="text-sm text-red-500">{error}</p>}
-      <Button type="submit" loading={loading}>Create Invoice</Button>
+      <Button type="submit" loading={loading} disabled={isDNC}>Create Invoice</Button>
     </form>
   );
 }
