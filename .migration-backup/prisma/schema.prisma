@@ -1,0 +1,108 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id             String   @id @default(uuid())
+  username       String   @unique
+  password       String
+  role           Role     @default(USER)
+  permissions    String[] @default([])
+  isActive       Boolean  @default(true) @map("is_active")
+  commissionRate Decimal  @default(0) @db.Decimal(5, 2) @map("commission_rate")
+  createdAt      DateTime @default(now()) @map("created_at")
+  orders         Order[]
+
+  @@map("users")
+}
+
+model Product {
+  id                String      @id @default(uuid())
+  name              String
+  sku               String      @unique
+  costPrice         Decimal     @db.Decimal(10, 2) @map("cost_price")
+  sellingPrice      Decimal     @db.Decimal(10, 2) @map("selling_price")
+  stockQuantity     Int         @default(0) @map("stock_quantity")
+  lowStockThreshold Int         @default(10) @map("low_stock_threshold")
+  createdAt         DateTime    @default(now()) @map("created_at")
+  orderItems        OrderItem[]
+  purchases         Purchase[]
+
+  @@map("products")
+}
+
+model Customer {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String?
+  email     String?
+  address   String?
+  createdAt DateTime @default(now()) @map("created_at")
+  orders    Order[]
+
+  @@map("customers")
+}
+
+model Order {
+  id          String      @id @default(uuid())
+  customer    Customer    @relation(fields: [customerId], references: [id])
+  customerId  String      @map("customer_id")
+  createdById String?     @map("created_by_id")
+  user        User?       @relation(fields: [createdById], references: [id])
+  totalAmount    Decimal     @db.Decimal(10, 2) @map("total_amount")
+  status         OrderStatus @default(PROCESSING)
+  isPaid         Boolean     @default(false) @map("is_paid")
+  paymentMethod  String?     @map("payment_method")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  items          OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String  @id @default(uuid())
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId   String  @map("order_id")
+  product   Product @relation(fields: [productId], references: [id])
+  productId String  @map("product_id")
+  quantity  Int
+  price     Decimal @db.Decimal(10, 2)
+
+  @@map("order_items")
+}
+
+model Purchase {
+  id         String   @id @default(uuid())
+  product    Product  @relation(fields: [productId], references: [id])
+  productId  String   @map("product_id")
+  quantity   Int
+  unitCost   Decimal  @db.Decimal(10, 2) @map("unit_cost")
+  totalCost  Decimal  @db.Decimal(10, 2) @map("total_cost")
+  reference  String?
+  batchRef   String?  @map("batch_ref")
+  vatAmount  Decimal  @default(0) @db.Decimal(10, 2) @map("vat_amount")
+  vatEnabled Boolean  @default(false) @map("vat_enabled")
+  vatRate    Decimal  @default(0) @db.Decimal(5, 2) @map("vat_rate")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("purchases")
+}
+
+enum OrderStatus {
+  PROCESSING
+  PROCESSED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum Role {
+  ADMIN
+  USER
+}
