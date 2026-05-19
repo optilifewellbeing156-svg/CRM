@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { UserPlus, Pencil, Trash2, CheckCircle, XCircle } from "lucide-react";
+import { UserPlus, Pencil, Trash2, CheckCircle, XCircle, ToggleLeft, ToggleRight } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
@@ -74,6 +74,16 @@ export default function UsersPage() {
     setSlideOpen(false); fetchUsers();
   }
 
+  async function toggleActive(u: User) {
+    await fetch(`/api/users/${u.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ isActive: !u.isActive }),
+    });
+    fetchUsers();
+  }
+
   async function handleDelete() {
     if (!deleteTarget) return;
     setDeleting(true);
@@ -141,6 +151,15 @@ export default function UsersPage() {
                   <td className="px-4 py-3 text-gray-500">{Number(u.commissionRate)}%</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2 justify-end">
+                      {isSuperAdmin && u.id !== me?.userId && (
+                        <button
+                          onClick={() => toggleActive(u)}
+                          title={u.isActive ? "Deactivate user" : "Activate user"}
+                          className={u.isActive ? "text-green-500 hover:text-red-500" : "text-red-400 hover:text-green-500"}
+                        >
+                          {u.isActive ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                        </button>
+                      )}
                       <button onClick={() => openEdit(u)} className="text-gray-400 hover:text-primary"><Pencil size={15} /></button>
                       {isSuperAdmin && u.role !== "SUPER_ADMIN" && (
                         <button onClick={() => setDeleteTarget(u)} className="text-gray-400 hover:text-red-500"><Trash2 size={15} /></button>
