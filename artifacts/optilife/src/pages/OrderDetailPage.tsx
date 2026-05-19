@@ -27,9 +27,10 @@ export default function OrderDetailPage({ id }: { id: string }) {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
 
-  const isAdmin = me?.role === "ADMIN";
+  const isAdmin = me?.role === "ADMIN" || me?.role === "SUPER_ADMIN";
   const canDelete = isAdmin || me?.permissions?.includes("delete-orders");
   const canEdit = isAdmin || me?.permissions?.includes("edit-orders");
+  const canChangeStatus = isAdmin || me?.permissions?.includes("change-order-status");
 
   useEffect(() => {
     fetch(`/api/orders/${id}`, { credentials: "include" })
@@ -146,7 +147,7 @@ export default function OrderDetailPage({ id }: { id: string }) {
           </div>
         </div>
 
-        {canEdit && (
+        {canChangeStatus && (
           <div className="mb-6">
             <p className="text-xs uppercase text-gray-400 mb-2">Status</p>
             <div className="flex flex-wrap gap-2">

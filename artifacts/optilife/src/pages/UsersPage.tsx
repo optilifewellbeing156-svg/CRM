@@ -129,7 +129,7 @@ export default function UsersPage() {
                   <td className="px-4 py-3 font-medium">{u.username}</td>
                   <td className="px-4 py-3">
                     <Badge variant={ROLE_BADGE[u.role] ?? "success"}>
-                      {u.role === "SUPER_ADMIN" ? "Super Admin" : u.role === "ADMIN" ? "Admin" : "User"}
+                      {u.role === "SUPER_ADMIN" ? "Owner" : u.role === "ADMIN" ? "Admin" : "User"}
                     </Badge>
                   </td>
                   <td className="px-4 py-3">

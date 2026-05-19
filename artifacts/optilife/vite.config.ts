@@ -52,6 +52,7 @@ export default defineConfig({
       "/api": {
         target: `http://localhost:${process.env.API_PORT ?? 8080}`,
         changeOrigin: true,
+        cookieDomainRewrite: "localhost",
       },
     },
   },

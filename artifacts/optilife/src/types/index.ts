@@ -96,6 +96,7 @@ export const PERMISSIONS = [
   { key: "create-orders", label: "Create New Orders", group: "Orders" },
   { key: "edit-orders", label: "Edit Orders", group: "Orders" },
   { key: "delete-orders", label: "Delete Orders", group: "Orders" },
+  { key: "change-order-status", label: "Change Order Status", group: "Orders" },
   { key: "add-purchases", label: "Add Purchases", group: "Purchases" },
 ] as const;
 

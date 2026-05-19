@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "wouter";
-import { Plus, Eye, Trash2 } from "lucide-react";
+import { Plus, Eye, Trash2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { Modal } from "@/components/ui/Modal";
@@ -22,8 +22,10 @@ export default function OrdersPage() {
   const [deleteTarget, setDeleteTarget] = useState<Order | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const canCreate = me?.role === "ADMIN" || me?.permissions?.includes("create-orders");
-  const canDelete = me?.role === "ADMIN" || me?.permissions?.includes("delete-orders");
+  const isSuperAdmin = me?.role === "SUPER_ADMIN";
+  const canCreate = isSuperAdmin || me?.role === "ADMIN" || me?.permissions?.includes("create-orders");
+  const canEdit = isSuperAdmin || me?.role === "ADMIN" || me?.permissions?.includes("edit-orders");
+  const canDelete = isSuperAdmin || me?.role === "ADMIN" || me?.permissions?.includes("delete-orders");
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
@@ -98,6 +100,11 @@ export default function OrdersPage() {
                       <Link href={`/orders/${o.id}`}>
                         <a className="text-gray-400 hover:text-primary"><Eye size={15} /></a>
                       </Link>
+                      {canEdit && (
+                        <Link href={`/orders/${o.id}`}>
+                          <a className="text-gray-400 hover:text-primary"><Pencil size={15} /></a>
+                        </Link>
+                      )}
                       {canDelete && (
                         <button onClick={() => setDeleteTarget(o)} className="text-gray-400 hover:text-red-500">
                           <Trash2 size={15} />
