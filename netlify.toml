@@ -11,7 +11,7 @@
 # Proxy /api/* to your deployed API server (update URL after Railway deploy).
 [[redirects]]
   from   = "/api/*"
-  to     = "https://YOUR_API_SERVER_URL/api/:splat"
+  to     = "https://crm-hpcx.onrender.com/api/:splat"
   status = 200
   force  = true
 
