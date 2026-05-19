@@ -18,5 +18,11 @@
     "@rollup/rollup-darwin-arm64": "^4.60.4",
     "@tailwindcss/oxide-darwin-arm64": "^4.3.0",
     "lightningcss-darwin-arm64": "^1.32.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "bcrypt",
+      "esbuild"
+    ]
   }
 }
