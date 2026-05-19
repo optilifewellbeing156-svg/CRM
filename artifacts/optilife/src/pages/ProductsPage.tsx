@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Pencil, Trash2, Plus, Bell } from "lucide-react";
+import { Pencil, Trash2, Plus, Bell, PackagePlus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Spinner } from "@/components/ui/Spinner";
@@ -19,8 +19,17 @@ export default function ProductsPage() {
   const [editing, setEditing] = useState<Product | undefined>();
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [stockTarget, setStockTarget] = useState<Product | null>(null);
+  const [stockValue, setStockValue] = useState("");
+  const [updatingStock, setUpdatingStock] = useState(false);
 
-  const canManage = me?.role === "ADMIN" || me?.permissions?.includes("manage-products");
+  const isSuperAdmin = me?.role === "SUPER_ADMIN";
+  const isAdmin = isSuperAdmin || me?.role === "ADMIN";
+  const hasManage = isAdmin || me?.permissions?.includes("manage-products");
+  const canAdd = hasManage;
+  const canEdit = hasManage || me?.permissions?.includes("edit-products");
+  const canDelete = hasManage || me?.permissions?.includes("delete-products");
+  const canChangeStock = hasManage || me?.permissions?.includes("change-stock");
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -50,13 +59,27 @@ export default function ProductsPage() {
     fetchProducts();
   }
 
+  async function handleStockUpdate() {
+    if (!stockTarget) return;
+    setUpdatingStock(true);
+    await fetch(`/api/products/${stockTarget.id}`, {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stockQuantity: Number(stockValue) }),
+    });
+    setUpdatingStock(false);
+    setStockTarget(null);
+    fetchProducts();
+  }
+
   if (error) return <p className="text-center py-20 text-sm text-red-500">Failed to load products.</p>;
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Products</h1>
-        {canManage && (
+        {canAdd && (
           <Button onClick={openCreate} className="flex items-center gap-2">
             <Plus size={16} /> Add Product
           </Button>
@@ -112,16 +135,23 @@ export default function ProductsPage() {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      {canManage && (
-                        <div className="flex items-center gap-2 justify-end">
+                      <div className="flex items-center gap-2 justify-end">
+                        {canEdit && (
                           <button onClick={() => openEdit(p)} className="text-gray-400 hover:text-primary">
                             <Pencil size={15} />
                           </button>
+                        )}
+                        {canChangeStock && !canEdit && (
+                          <button onClick={() => { setStockTarget(p); setStockValue(String(p.stockQuantity)); }} className="text-gray-400 hover:text-primary">
+                            <PackagePlus size={15} />
+                          </button>
+                        )}
+                        {canDelete && (
                           <button onClick={() => setDeleteTarget(p)} className="text-gray-400 hover:text-red-500">
                             <Trash2 size={15} />
                           </button>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -149,6 +179,21 @@ export default function ProductsPage() {
         <div className="flex gap-3 justify-end">
           <Button variant="secondary" onClick={() => setDeleteTarget(null)}>Cancel</Button>
           <Button variant="danger" loading={deleting} onClick={handleDelete}>Delete</Button>
+        </div>
+      </Modal>
+
+      <Modal open={!!stockTarget} title="Change Stock" onClose={() => setStockTarget(null)}>
+        <p className="text-sm text-gray-600 mb-3">Update stock quantity for <strong>{stockTarget?.name}</strong>.</p>
+        <input
+          type="number"
+          min="0"
+          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary/30 mb-4"
+          value={stockValue}
+          onChange={(e) => setStockValue(e.target.value)}
+        />
+        <div className="flex gap-3 justify-end">
+          <Button variant="secondary" onClick={() => setStockTarget(null)}>Cancel</Button>
+          <Button loading={updatingStock} onClick={handleStockUpdate}>Update Stock</Button>
         </div>
       </Modal>
     </div>
