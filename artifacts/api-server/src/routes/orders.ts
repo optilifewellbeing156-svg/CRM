@@ -66,18 +66,18 @@ router.post("/orders", requirePermission("create-orders"), async (req: AuthReque
       return;
     }
 
-    // 30-day per-customer order cooldown: once an order is placed for a
-    // customer, no new order may be booked for that customer for 30 days.
-    // From day 31 a new order is allowed, which restarts the 30-day window.
+    // 25-day per-customer order cooldown: once an order is placed for a
+    // customer, no new order may be booked for that customer for 25 days.
+    // From day 26 a new order is allowed, which restarts the 25-day window.
     // Computed in Postgres so the comparison stays in a single timezone frame
     // (created_at is a naive `timestamp`, so mixing in JS Date would skew it).
     const cooldownRes = await db.execute(sql`
       SELECT
-        CEIL(EXTRACT(EPOCH FROM (created_at + interval '30 days' - now())) / 86400)::int AS days_remaining,
-        to_char((created_at + interval '30 days')::date, 'DD/MM/YYYY') AS next_allowed
+        CEIL(EXTRACT(EPOCH FROM (created_at + interval '25 days' - now())) / 86400)::int AS days_remaining,
+        to_char((created_at + interval '25 days')::date, 'DD/MM/YYYY') AS next_allowed
       FROM orders
       WHERE customer_id = ${customerId}
-        AND created_at > now() - interval '30 days'
+        AND created_at > now() - interval '25 days'
       ORDER BY created_at DESC
       LIMIT 1
     `);
@@ -85,7 +85,7 @@ router.post("/orders", requirePermission("create-orders"), async (req: AuthReque
     if (cooldown) {
       const daysRemaining = Math.max(1, Number(cooldown.days_remaining));
       res.status(409).json({
-        error: `An order was already placed for this customer within the last 30 days. You can place a new order for them in ${daysRemaining} day${daysRemaining === 1 ? "" : "s"} (from ${cooldown.next_allowed}).`,
+        error: `An order was already placed for this customer within the last 25 days. You can place a new order for them in ${daysRemaining} day${daysRemaining === 1 ? "" : "s"} (from ${cooldown.next_allowed}).`,
         cooldown: {
           daysRemaining,
           nextAllowedDate: cooldown.next_allowed,
