@@ -8,7 +8,7 @@ const router = Router();
 
 router.get("/sales-report", requirePermission("sales-report"), async (req: AuthRequest, res: Response) => {
   try {
-    const { from, to } = req.query;
+    const { from, to, userId } = req.query;
     if (!from || !to) {
       res.status(400).json({ error: "from and to are required" });
       return;
@@ -19,9 +19,15 @@ router.get("/sales-report", requirePermission("sales-report"), async (req: AuthR
     toDate.setHours(23, 59, 59, 999);
     const privileged = isPrivileged(req.auth!.role);
     const dateFilter = and(gte(ordersTable.createdAt, fromDate), lte(ordersTable.createdAt, toDate));
-    const whereClause = privileged
-      ? dateFilter
-      : and(dateFilter, eq(ordersTable.createdById, req.auth!.userId));
+    // Privileged users see all users by default, or a single user when a
+    // userId filter is supplied. Non-privileged users are always scoped to
+    // their own orders.
+    const scopedUserId = privileged
+      ? (typeof userId === "string" && userId ? userId : null)
+      : req.auth!.userId;
+    const whereClause = scopedUserId
+      ? and(dateFilter, eq(ordersTable.createdById, scopedUserId))
+      : dateFilter;
 
     const orders = await db.select({
       id: ordersTable.id,

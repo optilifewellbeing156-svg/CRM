@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { TrendingUp, ShoppingCart, BarChart3, Users, Download } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { Badge } from "@/components/ui/Badge";
+import { useMe } from "@/hooks/useMe";
 
 function downloadCSV(filename: string, rows: string[][]) {
   const csv = rows.map((r) => r.map((cell) => {
@@ -44,11 +45,26 @@ export default function SalesReportPage() {
   const [data, setData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [userId, setUserId] = useState("");
+  const [users, setUsers] = useState<{ id: string; username: string }[]>([]);
+
+  const me = useMe();
+  const isPrivileged = me !== "loading" && (me?.role === "ADMIN" || me?.role === "SUPER_ADMIN");
+
+  useEffect(() => {
+    if (!isPrivileged) return;
+    fetch("/api/users", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => setUsers(Array.isArray(data) ? data : []))
+      .catch(() => setUsers([]));
+  }, [isPrivileged]);
 
   async function fetchReport() {
     setLoading(true);
     setError("");
-    const res = await fetch(`/api/sales-report?from=${from}&to=${to}`, { credentials: "include" });
+    const params = new URLSearchParams({ from, to });
+    if (isPrivileged && userId) params.set("userId", userId);
+    const res = await fetch(`/api/sales-report?${params.toString()}`, { credentials: "include" });
     if (!res.ok) { setError("Failed to fetch report"); setLoading(false); return; }
     setData(await res.json());
     setLoading(false);
@@ -88,6 +104,18 @@ export default function SalesReportPage() {
           <input type="date" value={to} onChange={(e) => setTo(e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/30" />
         </div>
+        {isPrivileged && (
+          <div>
+            <label className="text-xs font-medium text-gray-500 mb-1 block uppercase tracking-wide">User</label>
+            <select value={userId} onChange={(e) => setUserId(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/30 bg-white min-w-[160px]">
+              <option value="">All users</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>{u.username}</option>
+              ))}
+            </select>
+          </div>
+        )}
         <Button onClick={fetchReport} loading={loading}>Generate Report</Button>
         {data && (
           <Button variant="secondary" onClick={handleExport} className="flex items-center gap-2">
