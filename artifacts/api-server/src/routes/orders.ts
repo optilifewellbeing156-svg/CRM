@@ -43,8 +43,12 @@ router.get("/orders", requirePermission("orders"), async (req: AuthRequest, res:
 
 router.post("/orders", requirePermission("create-orders"), async (req: AuthRequest, res: Response) => {
   try {
-    const { customerId, items, invoiceDate, isPaid, paymentMethod, note, roundOff, postage } = req.body;
-    const createdById = req.auth!.userId;
+    const { customerId, items, invoiceDate, isPaid, paymentMethod, note, roundOff, postage, createdById: requestedCreatedById } = req.body;
+    // Privileged users may attribute the order to another user (the "Created By"
+    // selection on the form); everyone else is recorded as themselves.
+    const createdById = isPrivileged(req.auth!.role) && requestedCreatedById
+      ? requestedCreatedById
+      : req.auth!.userId;
     const roundOffAmount = Number.isFinite(Number(roundOff)) ? Number(roundOff) : 0;
     const postageAmount = Number.isFinite(Number(postage)) && Number(postage) > 0 ? Number(postage) : 0;
     if (!customerId || !items?.length) {
