@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { TrendingUp, ShoppingCart, BarChart3, Users, Download } from "lucide-react";
+import { TrendingUp, ShoppingCart, BarChart3, Users, Download, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { Badge } from "@/components/ui/Badge";
@@ -29,6 +29,8 @@ type ReportData = {
   totalRevenue: number;
   totalOrders: number;
   avgOrderValue: number;
+  cancelledRefundedAmount: number;
+  cancelledRefundedCount: number;
   orders: { id: string; customer: string; createdBy: string | null; itemCount: number; totalAmount: number; createdAt: string; status: string }[];
   topProducts: { name: string; unitsSold: number; revenue: number }[];
   userReport: { userId: string; username: string; totalOrders: number; totalSales: number; commissionRate: number; commission: number }[];
@@ -130,11 +132,12 @@ export default function SalesReportPage() {
 
       {data && !loading && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { icon: TrendingUp, label: "Total Revenue", value: `£${data.totalRevenue.toLocaleString("en-GB", { minimumFractionDigits: 2 })}`, color: "bg-primary" },
+              { icon: TrendingUp, label: "Net Revenue", value: `£${data.totalRevenue.toLocaleString("en-GB", { minimumFractionDigits: 2 })}`, color: "bg-primary" },
               { icon: ShoppingCart, label: "Total Orders", value: String(data.totalOrders), color: "bg-accent" },
               { icon: BarChart3, label: "Avg Order Value", value: `£${data.avgOrderValue.toFixed(2)}`, color: "bg-green-500" },
+              { icon: XCircle, label: `Cancelled / Refunded (${data.cancelledRefundedCount})`, value: `-£${data.cancelledRefundedAmount.toFixed(2)}`, color: "bg-red-500" },
             ].map(({ icon: Icon, label, value, color }) => (
               <div key={label} className="bg-white rounded-xl border border-gray-200 p-5 flex items-center gap-4">
                 <div className={`p-3 rounded-lg ${color}`}>
@@ -228,7 +231,9 @@ export default function SalesReportPage() {
                       <td className="px-4 py-3 font-mono text-xs">{o.id.slice(0, 8).toUpperCase()}</td>
                       <td className="px-4 py-3">{o.customer}</td>
                       <td className="px-4 py-3 text-gray-500">{o.createdBy ?? "—"}</td>
-                      <td className="px-4 py-3 text-right font-medium">£{o.totalAmount.toFixed(2)}</td>
+                      <td className={`px-4 py-3 text-right font-medium ${o.totalAmount < 0 ? "text-red-600" : ""}`}>
+                        {o.totalAmount < 0 ? `-£${Math.abs(o.totalAmount).toFixed(2)}` : `£${o.totalAmount.toFixed(2)}`}
+                      </td>
                       <td className="px-4 py-3 text-gray-500">{new Date(o.createdAt).toLocaleDateString("en-GB")}</td>
                       <td className="px-4 py-3">
                         <Badge variant={STATUS_VARIANT[o.status] ?? "default"}>{o.status}</Badge>

@@ -73,9 +73,19 @@ router.get("/sales-report", requirePermission("sales-report"), async (req: AuthR
       itemsByOrder.get(item.orderId)!.push(item);
     }
 
-    const totalRevenue = orders.reduce((sum, o) => sum + Number(o.totalAmount), 0);
+    // Cancelled / refunded orders reverse their amount (count as negative) so
+    // the report reflects net sales.
+    const REVERSED = new Set(["CANCELLED", "REFUNDED"]);
+    const signedAmount = (o: { status: string | null; totalAmount: string | number }) =>
+      (o.status && REVERSED.has(o.status) ? -1 : 1) * Number(o.totalAmount);
+
+    const totalRevenue = orders.reduce((sum, o) => sum + signedAmount(o), 0);
     const totalOrders = orders.length;
     const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+    const reversedOrders = orders.filter((o) => o.status && REVERSED.has(o.status));
+    const cancelledRefundedAmount = reversedOrders.reduce((sum, o) => sum + Number(o.totalAmount), 0);
+    const cancelledRefundedCount = reversedOrders.length;
 
     const productMap = new Map<string, { name: string; unitsSold: number; revenue: number }>();
     for (const order of orders) {
@@ -104,7 +114,7 @@ router.get("/sales-report", requirePermission("sales-report"), async (req: AuthR
     for (const order of orders) {
       if (!order.createdById || !order.userUsername) continue;
       const rate = Number(order.userCommissionRate ?? 0);
-      const amount = Number(order.totalAmount);
+      const amount = signedAmount(order);
       const existing = userMap.get(order.createdById) ?? {
         userId: order.createdById,
         username: order.userUsername,
@@ -123,12 +133,14 @@ router.get("/sales-report", requirePermission("sales-report"), async (req: AuthR
       totalRevenue,
       totalOrders,
       avgOrderValue,
+      cancelledRefundedAmount,
+      cancelledRefundedCount,
       orders: orders.map(o => ({
         id: o.id,
         customer: o.customerName || "",
         createdBy: o.userUsername ?? null,
         itemCount: (itemsByOrder.get(o.id) ?? []).length,
-        totalAmount: Number(o.totalAmount),
+        totalAmount: signedAmount(o),
         createdAt: o.createdAt,
         status: o.status,
       })),
