@@ -43,13 +43,15 @@ export type InvoiceOrder = {
   status?: string | null;
   isPaid?: boolean;
   paymentMethod?: string | null;
+  postage?: string | number | null;
   customer: { name: string; email?: string | null; phone?: string | null; address?: string | null };
   items: Array<{ id: string; quantity: string | number; price: string | number; product: { name: string } }>;
 };
 
 export function InvoicePDF({ order }: { order: InvoiceOrder }) {
   const subTotal = order.items.reduce((sum, item) => sum + Number(item.price) * Number(item.quantity), 0);
-  const roundOff = Number(order.totalAmount) - subTotal;
+  const postage = Number(order.postage) || 0;
+  const roundOff = Number(order.totalAmount) - subTotal - postage;
   const date = new Date(order.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
   const invoiceNo = order.id.slice(0, 8).toUpperCase();
 
@@ -120,7 +122,7 @@ export function InvoicePDF({ order }: { order: InvoiceOrder }) {
           </View>
           <View style={s.totalLine}>
             <Text style={s.totalLineLabel}>Postage</Text>
-            <Text style={s.totalLineValue}>£0.00</Text>
+            <Text style={s.totalLineValue}>£{postage.toFixed(2)}</Text>
           </View>
           {Math.abs(roundOff) >= 0.005 ? (
             <View style={s.totalLine}>

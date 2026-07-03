@@ -17,6 +17,7 @@ export const ordersTable = pgTable("orders", {
   customerId: text("customer_id").notNull().references(() => customersTable.id),
   createdById: text("created_by_id").references(() => usersTable.id),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  postage: decimal("postage", { precision: 10, scale: 2 }).notNull().default("0"),
   status: orderStatusEnum("status").notNull().default("PROCESSING"),
   isPaid: boolean("is_paid").notNull().default(false),
   paymentMethod: text("payment_method"),

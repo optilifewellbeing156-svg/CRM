@@ -18,6 +18,7 @@ router.get("/orders/:id/pdf", requireAnyPermission("orders", "create-orders", "e
       status: ordersTable.status,
       isPaid: ordersTable.isPaid,
       paymentMethod: ordersTable.paymentMethod,
+      postage: ordersTable.postage,
       customerName: customersTable.name,
       customerEmail: customersTable.email,
       customerPhone: customersTable.phone,
@@ -51,6 +52,7 @@ router.get("/orders/:id/pdf", requireAnyPermission("orders", "create-orders", "e
       status: o.status,
       isPaid: o.isPaid,
       paymentMethod: o.paymentMethod,
+      postage: o.postage,
       customer: {
         name: o.customerName ?? "Unknown",
         email: o.customerEmail,

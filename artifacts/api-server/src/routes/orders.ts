@@ -43,9 +43,10 @@ router.get("/orders", requirePermission("orders"), async (req: AuthRequest, res:
 
 router.post("/orders", requirePermission("create-orders"), async (req: AuthRequest, res: Response) => {
   try {
-    const { customerId, items, invoiceDate, isPaid, paymentMethod, note, roundOff } = req.body;
+    const { customerId, items, invoiceDate, isPaid, paymentMethod, note, roundOff, postage } = req.body;
     const createdById = req.auth!.userId;
     const roundOffAmount = Number.isFinite(Number(roundOff)) ? Number(roundOff) : 0;
+    const postageAmount = Number.isFinite(Number(postage)) && Number(postage) > 0 ? Number(postage) : 0;
     if (!customerId || !items?.length) {
       res.status(400).json({ error: "Customer and items are required" });
       return;
@@ -122,13 +123,15 @@ router.post("/orders", requirePermission("create-orders"), async (req: AuthReque
         return { productId: item.productId, quantity: String(item.quantity), price: String(unitPrice) };
       });
 
-      // Apply the manual round-off adjustment (can be negative); never below 0.
-      totalAmount = Math.max(0, totalAmount + roundOffAmount);
+      // Add manual postage, then the round-off adjustment (can be negative);
+      // never below 0.
+      totalAmount = Math.max(0, totalAmount + postageAmount + roundOffAmount);
 
       const [created] = await tx.insert(ordersTable).values({
         customerId,
         createdById,
         totalAmount: String(totalAmount),
+        postage: String(postageAmount),
         isPaid: !!isPaid,
         paymentMethod: paymentMethod || null,
         note: note || null,
@@ -237,8 +240,9 @@ router.delete("/orders/:id", requirePermission("delete-orders"), async (req: Aut
 
 router.put("/orders/:id", requirePermission("edit-orders"), async (req: AuthRequest, res: Response) => {
   try {
-    const { customerId, items, invoiceDate, createdById, status, isPaid, paymentMethod, roundOff } = req.body;
+    const { customerId, items, invoiceDate, createdById, status, isPaid, paymentMethod, roundOff, postage } = req.body;
     const roundOffAmount = Number.isFinite(Number(roundOff)) ? Number(roundOff) : 0;
+    const postageAmount = Number.isFinite(Number(postage)) && Number(postage) > 0 ? Number(postage) : 0;
 
     const existing = await db.select().from(ordersTable).where(eq(ordersTable.id, req.params.id)).limit(1);
     if (!existing[0]) {
@@ -315,8 +319,9 @@ router.put("/orders/:id", requirePermission("edit-orders"), async (req: AuthRequ
         return { productId: item.productId, quantity: String(item.quantity), price: String(unitPrice) };
       });
 
-      // Apply the manual round-off adjustment (can be negative); never below 0.
-      totalAmount = Math.max(0, totalAmount + roundOffAmount);
+      // Add manual postage, then the round-off adjustment (can be negative);
+      // never below 0.
+      totalAmount = Math.max(0, totalAmount + postageAmount + roundOffAmount);
 
       const updated = await db.transaction(async (tx) => {
         for (const item of existingItems) {
@@ -338,6 +343,7 @@ router.put("/orders/:id", requirePermission("edit-orders"), async (req: AuthRequ
           .set({
             customerId: customerId ?? existingOrder.customerId,
             totalAmount: String(totalAmount),
+            postage: String(postageAmount),
             createdById: createdById !== undefined ? createdById : existingOrder.createdById,
             ...(invoiceDate ? { createdAt: new Date(invoiceDate) } : {}),
             ...(status && { status }),

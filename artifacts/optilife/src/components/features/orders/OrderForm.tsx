@@ -20,6 +20,7 @@ export function OrderForm() {
   const [isPaid, setIsPaid] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("");
   const [items, setItems] = useState<LineItem[]>([{ productId: "", quantity: 1, price: "" }]);
+  const [postage, setPostage] = useState("");
   const [roundOff, setRoundOff] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
@@ -78,8 +79,9 @@ export function OrderForm() {
     const price = Number(item.price) || 0;
     return sum + price * item.quantity;
   }, 0);
+  const postageValue = Number(postage) > 0 ? Number(postage) : 0;
   const roundOffValue = Number(roundOff) || 0;
-  const finalTotal = subtotal + roundOffValue;
+  const finalTotal = subtotal + postageValue + roundOffValue;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -100,6 +102,7 @@ export function OrderForm() {
         body: JSON.stringify({
           customerId,
           items: items.map((i) => ({ productId: i.productId, quantity: i.quantity, price: Number(i.price) })),
+          postage: postageValue,
           roundOff: roundOffValue,
           createdById: createdById || null,
           invoiceDate,
@@ -284,6 +287,21 @@ export function OrderForm() {
           <div className="flex items-center justify-between text-gray-600">
             <span>Sub-total</span>
             <span>£{subtotal.toFixed(2)}</span>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-gray-600">Postage</span>
+            <div className="flex items-center gap-1">
+              <span className="text-gray-400">£</span>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={postage}
+                onChange={(e) => setPostage(e.target.value)}
+                placeholder="0.00"
+                className="w-24 px-2 py-1 text-right border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
           </div>
           <div className="flex items-center justify-between gap-2">
             <span className="text-gray-600">Round off (±)</span>
