@@ -167,7 +167,7 @@ export default function OrdersPage() {
                         <a className="text-gray-400 hover:text-primary"><Eye size={15} /></a>
                       </Link>
                       {canEdit && (
-                        <Link href={`/orders/${o.id}`}>
+                        <Link href={`/orders/${o.id}/edit`}>
                           <a className="text-gray-400 hover:text-primary"><Pencil size={15} /></a>
                         </Link>
                       )}

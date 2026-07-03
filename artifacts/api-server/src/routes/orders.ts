@@ -173,6 +173,7 @@ router.get("/orders/:id", requireAnyPermission("orders", "create-orders", "edit-
       status: ordersTable.status,
       isPaid: ordersTable.isPaid,
       paymentMethod: ordersTable.paymentMethod,
+      postage: ordersTable.postage,
       createdAt: ordersTable.createdAt,
       customerName: customersTable.name,
     })

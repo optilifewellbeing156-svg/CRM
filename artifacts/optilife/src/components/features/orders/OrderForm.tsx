@@ -6,23 +6,47 @@ import type { Customer, Product } from "@/types";
 
 type LineItem = { productId: string; quantity: number; price: string };
 
-export function OrderForm() {
+export type EditableOrder = {
+  id: string;
+  customerId: string;
+  createdById: string | null;
+  totalAmount: string | number;
+  isPaid: boolean;
+  paymentMethod: string | null;
+  postage?: string | number | null;
+  createdAt: string;
+  note?: string | null;
+  customer?: { name: string };
+  items: Array<{ productId: string; quantity: string | number; price: string | number }>;
+};
+
+export function OrderForm({ order }: { order?: EditableOrder } = {}) {
+  const isEdit = !!order;
   const [, setLocation] = useLocation();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [users, setUsers] = useState<{ id: string; username: string }[]>([]);
-  const [customerId, setCustomerId] = useState("");
-  const [customerSearch, setCustomerSearch] = useState("");
+  const [customerId, setCustomerId] = useState(order?.customerId ?? "");
+  const [customerSearch, setCustomerSearch] = useState(order?.customer?.name ?? "");
   const [customerOpen, setCustomerOpen] = useState(false);
   const customerRef = useRef<HTMLDivElement>(null);
-  const [createdById, setCreatedById] = useState("");
-  const [invoiceDate, setInvoiceDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [isPaid, setIsPaid] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState("");
-  const [items, setItems] = useState<LineItem[]>([{ productId: "", quantity: 1, price: "" }]);
-  const [postage, setPostage] = useState("");
-  const [roundOff, setRoundOff] = useState("");
-  const [note, setNote] = useState("");
+  const [createdById, setCreatedById] = useState(order?.createdById ?? "");
+  const [invoiceDate, setInvoiceDate] = useState(() =>
+    (order ? new Date(order.createdAt) : new Date()).toISOString().slice(0, 10));
+  const [isPaid, setIsPaid] = useState(order?.isPaid ?? false);
+  const [paymentMethod, setPaymentMethod] = useState(order?.paymentMethod ?? "");
+  const [items, setItems] = useState<LineItem[]>(
+    order && order.items.length
+      ? order.items.map((i) => ({ productId: i.productId, quantity: Number(i.quantity), price: String(Number(i.price)) }))
+      : [{ productId: "", quantity: 1, price: "" }]);
+  const [postage, setPostage] = useState(order && Number(order.postage) > 0 ? String(Number(order.postage)) : "");
+  const [roundOff, setRoundOff] = useState(() => {
+    if (!order) return "";
+    const sub = order.items.reduce((s, i) => s + Number(i.price) * Number(i.quantity), 0);
+    const ro = Number(order.totalAmount) - sub - (Number(order.postage) || 0);
+    return Math.abs(ro) >= 0.005 ? ro.toFixed(2) : "";
+  });
+  const [note, setNote] = useState(order?.note ?? "");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -87,7 +111,7 @@ export function OrderForm() {
     e.preventDefault();
     setError("");
     if (!customerId) { setError("Please select a customer"); return; }
-    if (isDNC) { setError("Cannot create an order for a DNC customer"); return; }
+    if (!isEdit && isDNC) { setError("Cannot create an order for a DNC customer"); return; }
     if (items.some((i) => !i.productId)) { setError("Please select a product for each line"); return; }
     if (items.some((i) => i.price === "" || Number(i.price) < 0)) {
       setError("Please enter a price for each product");
@@ -95,8 +119,8 @@ export function OrderForm() {
     }
     setLoading(true);
     try {
-      const res = await fetch("/api/orders", {
-        method: "POST",
+      const res = await fetch(isEdit ? `/api/orders/${order!.id}` : "/api/orders", {
+        method: isEdit ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
@@ -112,8 +136,8 @@ export function OrderForm() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) setError(data.error ?? "Failed to create order");
-      else setLocation(`/orders/${data.id}`);
+      if (!res.ok) setError(data.error ?? (isEdit ? "Failed to update order" : "Failed to create order"));
+      else setLocation(`/orders/${isEdit ? order!.id : data.id}`);
     } finally {
       setLoading(false);
     }
@@ -348,7 +372,9 @@ export function OrderForm() {
           <span>{error}</span>
         </div>
       )}
-      <Button type="submit" loading={loading} disabled={isDNC}>Create Invoice</Button>
+      <Button type="submit" loading={loading} disabled={!isEdit && isDNC}>
+        {isEdit ? "Save Changes" : "Create Invoice"}
+      </Button>
     </form>
   );
 }

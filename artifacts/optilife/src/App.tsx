@@ -10,6 +10,7 @@ import ProductsPage from "@/pages/ProductsPage";
 import CustomersPage from "@/pages/CustomersPage";
 import OrdersPage from "@/pages/OrdersPage";
 import NewOrderPage from "@/pages/NewOrderPage";
+import EditOrderPage from "@/pages/EditOrderPage";
 import OrderDetailPage from "@/pages/OrderDetailPage";
 import PurchasesPage from "@/pages/PurchasesPage";
 import SalesReportPage from "@/pages/SalesReportPage";
@@ -49,6 +50,11 @@ function AppRouter() {
       </Route>
       <Route path="/orders/new">
         <ProtectedRoute><NewOrderPage /></ProtectedRoute>
+      </Route>
+      <Route path="/orders/:id/edit">
+        {(params) => (
+          <ProtectedRoute><EditOrderPage id={params.id} /></ProtectedRoute>
+        )}
       </Route>
       <Route path="/orders/:id">
         {(params) => (
