@@ -49,6 +49,14 @@ export function requireAdmin(req: AuthRequest, res: Response, next: NextFunction
   next();
 }
 
+export function requireSuperAdmin(req: AuthRequest, res: Response, next: NextFunction): void {
+  if (req.auth?.role !== "SUPER_ADMIN") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  next();
+}
+
 export function requirePermission(permission: string) {
   return (req: AuthRequest, res: Response, next: NextFunction): void => {
     if (isPrivileged(req.auth?.role)) { next(); return; }

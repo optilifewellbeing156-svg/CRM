@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Pencil, Trash2, Plus, History, Ban, CheckCircle2 } from "lucide-react";
+import { Pencil, Trash2, Plus, History, Ban, CheckCircle2, Download } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { SlideOver } from "@/components/ui/SlideOver";
@@ -36,6 +36,25 @@ export default function CustomersPage() {
   const canDelete = hasManage || me?.permissions?.includes("delete-customers");
   const canViewCards = isPrivileged || me?.permissions?.includes("view-card-details");
   const canSetStatus = isPrivileged || me?.permissions?.includes("set-customer-status");
+  const isSuperAdmin = me?.role === "SUPER_ADMIN";
+  const [exporting, setExporting] = useState(false);
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const res = await fetch("/api/export/customers", { credentials: "include" });
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `customers-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   const fetchCustomers = useCallback(async () => {
     setLoading(true);
@@ -86,11 +105,18 @@ export default function CustomersPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
-        {canAdd && (
-          <Button onClick={() => { setEditing(undefined); setSlideOpen(true); }} className="flex items-center gap-2">
-            <Plus size={16} /> Add Customer
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {isSuperAdmin && (
+            <Button variant="secondary" loading={exporting} onClick={handleExport} className="flex items-center gap-2">
+              <Download size={16} /> Export Excel
+            </Button>
+          )}
+          {canAdd && (
+            <Button onClick={() => { setEditing(undefined); setSlideOpen(true); }} className="flex items-center gap-2">
+              <Plus size={16} /> Add Customer
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200">

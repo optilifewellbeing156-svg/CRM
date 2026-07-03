@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
-import { TrendingUp, ShoppingCart, AlertTriangle } from "lucide-react";
+import { TrendingUp, ShoppingCart, AlertTriangle, Download } from "lucide-react";
 import { Spinner } from "@/components/ui/Spinner";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { useMe } from "@/hooks/useMe";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import type { DashboardData } from "@/types";
 
@@ -41,10 +43,31 @@ function RevenueChart({ data }: { data: { date: string; revenue: number }[] }) {
 }
 
 export default function DashboardPage() {
+  const me = useMe();
   const [data, setData] = useState<DashboardData | null>(null);
   const [range, setRange] = useState<7 | 30>(30);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  const isSuperAdmin = me !== "loading" && me?.role === "SUPER_ADMIN";
+
+  async function handleExportCustomers() {
+    setExporting(true);
+    try {
+      const res = await fetch("/api/export/customers", { credentials: "include" });
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `customers-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   useEffect(() => {
     fetch("/api/dashboard", { credentials: "include" })
@@ -61,7 +84,14 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        {isSuperAdmin && (
+          <Button variant="secondary" loading={exporting} onClick={handleExportCustomers} className="flex items-center gap-2">
+            <Download size={16} /> Export Customers
+          </Button>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard icon={TrendingUp} label="Total Revenue" value={`£${data.totalRevenue.toLocaleString("en-GB", { minimumFractionDigits: 2 })}`} color="bg-primary" />

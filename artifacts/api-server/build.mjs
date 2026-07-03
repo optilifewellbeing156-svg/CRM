@@ -30,6 +30,7 @@ async function buildAll() {
     loader: { ".tsx": "tsx" },
     external: [
       "@react-pdf/renderer",
+      "exceljs",
       "react",
       "react-dom",
       "*.node",

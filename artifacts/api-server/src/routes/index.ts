@@ -9,6 +9,7 @@ import usersRouter from "./users";
 import dashboardRouter from "./dashboard";
 import salesReportRouter from "./sales-report";
 import invoiceRouter from "./invoice";
+import exportRouter from "./export";
 import { requireAuth, type AuthRequest } from "../lib/middleware";
 
 const router: IRouter = Router();
@@ -37,5 +38,6 @@ router.use(usersRouter);
 router.use(dashboardRouter);
 router.use(salesReportRouter);
 router.use(invoiceRouter);
+router.use(exportRouter);
 
 export default router;

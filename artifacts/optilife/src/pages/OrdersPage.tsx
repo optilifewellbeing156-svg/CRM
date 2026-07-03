@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "wouter";
-import { Plus, Eye, Trash2, Pencil } from "lucide-react";
+import { Plus, Eye, Trash2, Pencil, Download } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { Modal } from "@/components/ui/Modal";
@@ -23,9 +23,35 @@ export default function OrdersPage() {
   const [deleting, setDeleting] = useState(false);
 
   const isSuperAdmin = me?.role === "SUPER_ADMIN";
-  const canCreate = isSuperAdmin || me?.role === "ADMIN" || me?.permissions?.includes("create-orders");
-  const canEdit = isSuperAdmin || me?.role === "ADMIN" || me?.permissions?.includes("edit-orders");
-  const canDelete = isSuperAdmin || me?.role === "ADMIN" || me?.permissions?.includes("delete-orders");
+  const isPrivileged = isSuperAdmin || me?.role === "ADMIN";
+  const canCreate = isPrivileged || me?.permissions?.includes("create-orders");
+  const canEdit = isPrivileged || me?.permissions?.includes("edit-orders");
+  const canDelete = isPrivileged || me?.permissions?.includes("delete-orders");
+
+  const [exportFrom, setExportFrom] = useState("");
+  const [exportTo, setExportTo] = useState("");
+  const [exporting, setExporting] = useState(false);
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (exportFrom) params.set("from", exportFrom);
+      if (exportTo) params.set("to", exportTo);
+      const qs = params.toString();
+      const res = await fetch(`/api/export/orders${qs ? `?${qs}` : ""}`, { credentials: "include" });
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `orders-${exportFrom || "start"}_to_${exportTo || "end"}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
@@ -57,6 +83,46 @@ export default function OrdersPage() {
           </Link>
         )}
       </div>
+
+      {isPrivileged && (
+        <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 flex flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-500">From date</label>
+            <input
+              type="date"
+              value={exportFrom}
+              max={exportTo || undefined}
+              onChange={(e) => setExportFrom(e.target.value)}
+              className="px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-500">To date</label>
+            <input
+              type="date"
+              value={exportTo}
+              min={exportFrom || undefined}
+              onChange={(e) => setExportTo(e.target.value)}
+              className="px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+          <Button variant="secondary" loading={exporting} onClick={handleExport} className="flex items-center gap-2">
+            <Download size={16} /> Export Excel
+          </Button>
+          {(exportFrom || exportTo) && (
+            <button
+              type="button"
+              onClick={() => { setExportFrom(""); setExportTo(""); }}
+              className="text-sm text-gray-500 hover:text-gray-800 self-center"
+            >
+              Clear
+            </button>
+          )}
+          <span className="text-xs text-gray-400 self-center ml-auto">
+            Leave dates blank to export all orders. Export includes which user took each order.
+          </span>
+        </div>
+      )}
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {loading ? (
