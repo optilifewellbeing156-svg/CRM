@@ -196,7 +196,7 @@ export function OrderForm({ order }: { order?: EditableOrder } = {}) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Created By</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Order Taken By</label>
         <select
           value={createdById}
           onChange={(e) => setCreatedById(e.target.value)}

@@ -73,7 +73,7 @@ export default function SalesReportPage() {
   function handleExport() {
     if (!data) return;
     const rows: string[][] = [
-      ["Invoice #", "Customer", "Created By", "Items", "Total (£)", "Date", "Status"],
+      ["Invoice #", "Customer", "Order Taken By", "Items", "Total (£)", "Date", "Status"],
       ...data.orders.map((o) => [
         o.id.slice(0, 8).toUpperCase(),
         o.customer,
@@ -216,7 +216,7 @@ export default function SalesReportPage() {
                   <tr>
                     <th className="px-4 py-2 text-left">Invoice #</th>
                     <th className="px-4 py-2 text-left">Customer</th>
-                    <th className="px-4 py-2 text-left">Created By</th>
+                    <th className="px-4 py-2 text-left">Order Taken By</th>
                     <th className="px-4 py-2 text-right">Total</th>
                     <th className="px-4 py-2 text-left">Date</th>
                     <th className="px-4 py-2 text-left">Status</th>
