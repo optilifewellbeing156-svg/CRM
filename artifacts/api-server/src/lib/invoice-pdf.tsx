@@ -1,5 +1,6 @@
 import React from "react";
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { Document, Page, Text, View, Image, StyleSheet } from "@react-pdf/renderer";
+import { LOGO_DATA_URI } from "./logo-data";
 
 const GREEN = "#2D7D6F";
 const DARK_GREEN = "#1A4D44";
@@ -10,8 +11,7 @@ const s = StyleSheet.create({
   headerBar: { backgroundColor: DARK_GREEN, paddingHorizontal: 40, paddingVertical: 20, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
   brandName: { fontSize: 20, fontFamily: "Helvetica-Bold", color: "#fff" },
   brandTagline: { fontSize: 8, color: "rgba(255,255,255,0.7)", marginTop: 2 },
-  paidBadge: { paddingHorizontal: 14, paddingVertical: 5, borderRadius: 4, alignItems: "center", justifyContent: "center" },
-  paidText: { fontSize: 13, fontFamily: "Helvetica-Bold", letterSpacing: 1 },
+  logo: { width: 56, height: 56 },
   contactBar: { backgroundColor: LIGHT_GREEN, paddingHorizontal: 40, paddingVertical: 8, flexDirection: "row", justifyContent: "space-between" },
   contactText: { fontSize: 8, color: DARK_GREEN },
   body: { paddingHorizontal: 40, paddingTop: 24 },
@@ -48,7 +48,6 @@ export type InvoiceOrder = {
 };
 
 export function InvoicePDF({ order }: { order: InvoiceOrder }) {
-  const isPaid = order.isPaid ?? false;
   const subTotal = order.items.reduce((sum, item) => sum + Number(item.price) * Number(item.quantity), 0);
   const date = new Date(order.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
   const invoiceNo = order.id.slice(0, 8).toUpperCase();
@@ -61,9 +60,7 @@ export function InvoicePDF({ order }: { order: InvoiceOrder }) {
             <Text style={s.brandName}>OptiLifeWellbeing Ltd</Text>
             <Text style={s.brandTagline}>Health & Wellness Products</Text>
           </View>
-          <View style={[s.paidBadge, { backgroundColor: isPaid ? "#22c55e" : "#ef4444" }]}>
-            <Text style={[s.paidText, { color: "#fff" }]}>{isPaid ? "PAID" : "UNPAID"}</Text>
-          </View>
+          <Image src={LOGO_DATA_URI} style={s.logo} />
         </View>
 
         <View style={s.contactBar}>

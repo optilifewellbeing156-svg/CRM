@@ -31,9 +31,12 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   const sidebarContent = (
     <aside className="w-60 flex flex-col h-full" style={{ backgroundColor: "hsl(170,42%,30%)" }}>
       <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between">
-        <h1 className="text-white font-bold text-base leading-snug">
-          OptiLife<br />Wellbeing
-        </h1>
+        <div className="flex items-center gap-2.5">
+          <img src="/logo.png" alt="" className="h-9 w-9 shrink-0" />
+          <h1 className="text-white font-bold text-base leading-snug">
+            OptiLife<br />Wellbeing
+          </h1>
+        </div>
         <button onClick={onClose} className="text-white/70 hover:text-white lg:hidden" aria-label="Close menu">
           <X size={18} />
         </button>

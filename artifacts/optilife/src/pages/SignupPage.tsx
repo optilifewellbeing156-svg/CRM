@@ -48,7 +48,8 @@ export default function SignupPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: "hsl(160,30%,97%)" }}>
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 w-full max-w-sm p-8">
-        <div className="mb-8">
+        <div className="mb-8 flex flex-col items-center text-center">
+          <img src="/logo.png" alt="OptiLifeWellbeing" className="h-20 w-20 mb-3" />
           <h1 className="text-2xl font-bold" style={{ color: "hsl(170,42%,40%)" }}>
             OptiLifeWellbeing
           </h1>

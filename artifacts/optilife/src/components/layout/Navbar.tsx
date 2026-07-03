@@ -24,7 +24,10 @@ export function Navbar({ onMenuToggle }: NavbarProps) {
       >
         <Menu size={20} />
       </button>
-      <div className="lg:hidden" />
+      <div className="lg:hidden flex items-center gap-2">
+        <img src="/logo.png" alt="OptiLifeWellbeing" className="h-7 w-7" />
+        <span className="font-semibold text-sm" style={{ color: "hsl(170,42%,30%)" }}>OptiLifeWellbeing</span>
+      </div>
       <button onClick={handleLogout} className="text-sm text-gray-500 hover:text-gray-800 transition-colors ml-auto">
         Sign out
       </button>
