@@ -91,10 +91,6 @@ export function InvoicePDF({ order }: { order: InvoiceOrder }) {
               <Text style={s.fieldValue}>{invoiceNo}</Text>
               <Text style={s.fieldLabel}>Order Date</Text>
               <Text style={s.fieldValue}>{date}</Text>
-              <Text style={s.fieldLabel}>Status</Text>
-              <Text style={[s.fieldValue, { color: isPaid ? "#16a34a" : "#dc2626", fontFamily: "Helvetica-Bold" }]}>
-                {order.status ?? "PROCESSING"}
-              </Text>
             </View>
           </View>
 
