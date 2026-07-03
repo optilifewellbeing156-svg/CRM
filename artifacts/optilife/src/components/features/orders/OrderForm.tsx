@@ -20,6 +20,7 @@ export function OrderForm() {
   const [isPaid, setIsPaid] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("");
   const [items, setItems] = useState<LineItem[]>([{ productId: "", quantity: 1, price: "" }]);
+  const [roundOff, setRoundOff] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -73,10 +74,12 @@ export function OrderForm() {
   const selectedCustomer = customers.find((c) => c.id === customerId);
   const isDNC = selectedCustomer?.status === "dnc";
 
-  const total = items.reduce((sum, item) => {
+  const subtotal = items.reduce((sum, item) => {
     const price = Number(item.price) || 0;
     return sum + price * item.quantity;
   }, 0);
+  const roundOffValue = Number(roundOff) || 0;
+  const finalTotal = subtotal + roundOffValue;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -97,6 +100,7 @@ export function OrderForm() {
         body: JSON.stringify({
           customerId,
           items: items.map((i) => ({ productId: i.productId, quantity: i.quantity, price: Number(i.price) })),
+          roundOff: roundOffValue,
           createdById: createdById || null,
           invoiceDate,
           isPaid,
@@ -276,8 +280,36 @@ export function OrderForm() {
             </div>
           ))}
         </div>
-        <div className="mt-3 text-right text-sm font-semibold text-gray-900">
-          Total: £{total.toFixed(2)}
+        <div className="mt-4 ml-auto w-full max-w-xs space-y-1.5 text-sm">
+          <div className="flex items-center justify-between text-gray-600">
+            <span>Sub-total</span>
+            <span>£{subtotal.toFixed(2)}</span>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-gray-600">Round off (±)</span>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setRoundOff((Math.round(subtotal) - subtotal).toFixed(2))}
+                className="text-xs px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
+                title="Round total to the nearest whole pound"
+              >
+                Nearest £1
+              </button>
+              <input
+                type="number"
+                step="0.01"
+                value={roundOff}
+                onChange={(e) => setRoundOff(e.target.value)}
+                placeholder="0.00"
+                className="w-24 px-2 py-1 text-right border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+          </div>
+          <div className="flex items-center justify-between pt-1.5 border-t border-gray-200 text-base font-semibold text-gray-900">
+            <span>Total</span>
+            <span>£{finalTotal.toFixed(2)}</span>
+          </div>
         </div>
       </div>
 

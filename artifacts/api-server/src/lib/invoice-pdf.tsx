@@ -49,6 +49,7 @@ export type InvoiceOrder = {
 
 export function InvoicePDF({ order }: { order: InvoiceOrder }) {
   const subTotal = order.items.reduce((sum, item) => sum + Number(item.price) * Number(item.quantity), 0);
+  const roundOff = Number(order.totalAmount) - subTotal;
   const date = new Date(order.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
   const invoiceNo = order.id.slice(0, 8).toUpperCase();
 
@@ -121,6 +122,14 @@ export function InvoicePDF({ order }: { order: InvoiceOrder }) {
             <Text style={s.totalLineLabel}>Postage</Text>
             <Text style={s.totalLineValue}>£0.00</Text>
           </View>
+          {Math.abs(roundOff) >= 0.005 ? (
+            <View style={s.totalLine}>
+              <Text style={s.totalLineLabel}>Round Off</Text>
+              <Text style={s.totalLineValue}>
+                {roundOff < 0 ? "-" : ""}£{Math.abs(roundOff).toFixed(2)}
+              </Text>
+            </View>
+          ) : null}
           <View style={[s.grandTotalLine, { paddingHorizontal: 8 }]}>
             <Text style={s.grandTotalLabel}>TOTAL</Text>
             <Text style={s.grandTotalValue}>£{Number(order.totalAmount).toFixed(2)}</Text>

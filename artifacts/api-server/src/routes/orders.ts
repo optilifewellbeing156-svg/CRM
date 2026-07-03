@@ -43,8 +43,9 @@ router.get("/orders", requirePermission("orders"), async (req: AuthRequest, res:
 
 router.post("/orders", requirePermission("create-orders"), async (req: AuthRequest, res: Response) => {
   try {
-    const { customerId, items, invoiceDate, isPaid, paymentMethod, note } = req.body;
+    const { customerId, items, invoiceDate, isPaid, paymentMethod, note, roundOff } = req.body;
     const createdById = req.auth!.userId;
+    const roundOffAmount = Number.isFinite(Number(roundOff)) ? Number(roundOff) : 0;
     if (!customerId || !items?.length) {
       res.status(400).json({ error: "Customer and items are required" });
       return;
@@ -120,6 +121,9 @@ router.post("/orders", requirePermission("create-orders"), async (req: AuthReque
         totalAmount += unitPrice * item.quantity;
         return { productId: item.productId, quantity: String(item.quantity), price: String(unitPrice) };
       });
+
+      // Apply the manual round-off adjustment (can be negative); never below 0.
+      totalAmount = Math.max(0, totalAmount + roundOffAmount);
 
       const [created] = await tx.insert(ordersTable).values({
         customerId,
@@ -233,7 +237,8 @@ router.delete("/orders/:id", requirePermission("delete-orders"), async (req: Aut
 
 router.put("/orders/:id", requirePermission("edit-orders"), async (req: AuthRequest, res: Response) => {
   try {
-    const { customerId, items, invoiceDate, createdById, status, isPaid, paymentMethod } = req.body;
+    const { customerId, items, invoiceDate, createdById, status, isPaid, paymentMethod, roundOff } = req.body;
+    const roundOffAmount = Number.isFinite(Number(roundOff)) ? Number(roundOff) : 0;
 
     const existing = await db.select().from(ordersTable).where(eq(ordersTable.id, req.params.id)).limit(1);
     if (!existing[0]) {
@@ -309,6 +314,9 @@ router.put("/orders/:id", requirePermission("edit-orders"), async (req: AuthRequ
         totalAmount += unitPrice * item.quantity;
         return { productId: item.productId, quantity: String(item.quantity), price: String(unitPrice) };
       });
+
+      // Apply the manual round-off adjustment (can be negative); never below 0.
+      totalAmount = Math.max(0, totalAmount + roundOffAmount);
 
       const updated = await db.transaction(async (tx) => {
         for (const item of existingItems) {
