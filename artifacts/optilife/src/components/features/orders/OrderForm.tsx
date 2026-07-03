@@ -292,7 +292,12 @@ export function OrderForm() {
         />
       </div>
 
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && (
+        <div className="flex items-start gap-2 px-3 py-2.5 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 font-medium">
+          <Ban size={15} className="shrink-0 mt-0.5" />
+          <span>{error}</span>
+        </div>
+      )}
       <Button type="submit" loading={loading} disabled={isDNC}>Create Invoice</Button>
     </form>
   );
