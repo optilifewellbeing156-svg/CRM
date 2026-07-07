@@ -1,5 +1,5 @@
 import { useLocation, Link } from "wouter";
-import { LayoutDashboard, Package, Users, ShoppingCart, UsersRound, BarChart3, PackagePlus, X } from "lucide-react";
+import { LayoutDashboard, Package, Users, ShoppingCart, UsersRound, BarChart3, PackagePlus, Settings, X } from "lucide-react";
 import { useMe } from "@/hooks/useMe";
 
 const allNavItems = [
@@ -10,6 +10,7 @@ const allNavItems = [
   { href: "/orders", label: "Orders", Icon: ShoppingCart, permission: "orders" },
   { href: "/sales-report", label: "Sales Report", Icon: BarChart3, permission: "sales-report" },
   { href: "/users", label: "Users", Icon: UsersRound, permission: "ADMIN_ONLY" },
+  { href: "/settings", label: "Settings", Icon: Settings, permission: "ADMIN_ONLY" },
 ];
 
 interface SidebarProps {

@@ -15,5 +15,12 @@ export async function ensureSchema(): Promise<void> {
     ALTER TABLE orders
     ADD COLUMN IF NOT EXISTS postage numeric(10, 2) NOT NULL DEFAULT 0
   `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key text PRIMARY KEY,
+      value text NOT NULL,
+      updated_at timestamp NOT NULL DEFAULT now()
+    )
+  `);
   logger.info("Schema ensured (additive migrations applied)");
 }

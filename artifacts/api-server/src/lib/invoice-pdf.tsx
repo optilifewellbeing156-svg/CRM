@@ -48,7 +48,7 @@ export type InvoiceOrder = {
   items: Array<{ id: string; quantity: string | number; price: string | number; product: { name: string } }>;
 };
 
-export function InvoicePDF({ order }: { order: InvoiceOrder }) {
+export function InvoicePDF({ order, showVat = false }: { order: InvoiceOrder; showVat?: boolean }) {
   const subTotal = order.items.reduce((sum, item) => sum + Number(item.price) * Number(item.quantity), 0);
   const postage = Number(order.postage) || 0;
   const roundOff = Number(order.totalAmount) - subTotal - postage;
@@ -116,10 +116,12 @@ export function InvoicePDF({ order }: { order: InvoiceOrder }) {
             <Text style={s.totalLineLabel}>Sub-total</Text>
             <Text style={s.totalLineValue}>£{subTotal.toFixed(2)}</Text>
           </View>
-          <View style={s.totalLine}>
-            <Text style={s.totalLineLabel}>VAT (Included)</Text>
-            <Text style={s.totalLineValue}>£0.00</Text>
-          </View>
+          {showVat ? (
+            <View style={s.totalLine}>
+              <Text style={s.totalLineLabel}>VAT (Included)</Text>
+              <Text style={s.totalLineValue}>£0.00</Text>
+            </View>
+          ) : null}
           <View style={s.totalLine}>
             <Text style={s.totalLineLabel}>Postage</Text>
             <Text style={s.totalLineValue}>£{postage.toFixed(2)}</Text>

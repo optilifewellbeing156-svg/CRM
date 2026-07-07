@@ -15,6 +15,7 @@ import OrderDetailPage from "@/pages/OrderDetailPage";
 import PurchasesPage from "@/pages/PurchasesPage";
 import SalesReportPage from "@/pages/SalesReportPage";
 import UsersPage from "@/pages/UsersPage";
+import SettingsPage from "@/pages/SettingsPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const me = useMe();
@@ -72,6 +73,9 @@ function AppRouter() {
       </Route>
       <Route path="/users">
         <ProtectedRoute><UsersPage /></ProtectedRoute>
+      </Route>
+      <Route path="/settings">
+        <ProtectedRoute><SettingsPage /></ProtectedRoute>
       </Route>
       <Route path="/">
         <Redirect to="/dashboard" />
