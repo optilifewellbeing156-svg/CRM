@@ -135,14 +135,17 @@ export function InvoicePDF({ order, showVat = false, company = COMPANY_DEFAULT }
             <Text style={[s.tableHeadCell, { flex: 2, textAlign: "right" }]}>Total</Text>
           </View>
 
-          {order.items.map((item, i) => (
-            <View key={item.id} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}>
-              <Text style={[s.cell, { flex: 5 }]}>{item.product.name}</Text>
-              <Text style={[s.cell, { flex: 1, textAlign: "center" }]}>{Number(item.quantity)}</Text>
-              <Text style={[s.cell, { flex: 2, textAlign: "right" }]}>£{Number(item.price).toFixed(2)}</Text>
-              <Text style={[s.cell, { flex: 2, textAlign: "right" }]}>£{(Number(item.price) * Number(item.quantity)).toFixed(2)}</Text>
-            </View>
-          ))}
+          {order.items.map((item, i) => {
+            const isFree = Number(item.price) === 0;
+            return (
+              <View key={item.id} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}>
+                <Text style={[s.cell, { flex: 5 }]}>{item.product.name}</Text>
+                <Text style={[s.cell, { flex: 1, textAlign: "center" }]}>{Number(item.quantity)}</Text>
+                <Text style={[s.cell, { flex: 2, textAlign: "right" }]}>{isFree ? "Free" : `£${Number(item.price).toFixed(2)}`}</Text>
+                <Text style={[s.cell, { flex: 2, textAlign: "right" }]}>{isFree ? "Free Product" : `£${(Number(item.price) * Number(item.quantity)).toFixed(2)}`}</Text>
+              </View>
+            );
+          })}
         </View>
 
         <View style={s.totalsSection}>
