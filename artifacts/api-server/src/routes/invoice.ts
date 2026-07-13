@@ -6,7 +6,7 @@ import { ordersTable, orderItemsTable, productsTable, customersTable } from "@wo
 import { eq } from "drizzle-orm";
 import { InvoicePDF } from "../lib/invoice-pdf";
 import { requireAnyPermission, type AuthRequest } from "../lib/middleware";
-import { getInvoiceShowVat } from "../lib/settings";
+import { getInvoiceShowVat, getCompanyDetails } from "../lib/settings";
 
 const router = Router();
 
@@ -68,8 +68,8 @@ router.get("/orders/:id/pdf", requireAnyPermission("orders", "create-orders", "e
       })),
     };
 
-    const showVat = await getInvoiceShowVat();
-    const buffer = await renderToBuffer(React.createElement(InvoicePDF, { order, showVat }));
+    const [showVat, company] = await Promise.all([getInvoiceShowVat(), getCompanyDetails()]);
+    const buffer = await renderToBuffer(React.createElement(InvoicePDF, { order, showVat, company }));
 
     res.set({
       "Content-Type": "application/pdf",

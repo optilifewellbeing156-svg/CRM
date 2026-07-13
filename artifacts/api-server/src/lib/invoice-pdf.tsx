@@ -6,9 +6,18 @@ const GREEN = "#2D7D6F";
 const DARK_GREEN = "#1A4D44";
 const LIGHT_GREEN = "#E8F4F2";
 
-/** Single source of truth for our own company details, used on both the
- * invoice and the courier shipping label. */
-const COMPANY = {
+export type CompanyDetails = {
+  name: string;
+  tagline: string;
+  address: string;
+  phone: string;
+  website: string;
+  email: string;
+};
+
+/** Fallback company details, used when none are saved in Settings. Kept in
+ * sync with COMPANY_DEFAULTS in lib/settings.ts. */
+const COMPANY_DEFAULT: CompanyDetails = {
   name: "OptiLifeWellbeing Ltd",
   tagline: "Health & Wellness Products",
   address: "PineTree House, Gardiners Close, Basildon SS14 3AN",
@@ -73,7 +82,7 @@ export type InvoiceOrder = {
   items: Array<{ id: string; quantity: string | number; price: string | number; product: { name: string } }>;
 };
 
-export function InvoicePDF({ order, showVat = false }: { order: InvoiceOrder; showVat?: boolean }) {
+export function InvoicePDF({ order, showVat = false, company = COMPANY_DEFAULT }: { order: InvoiceOrder; showVat?: boolean; company?: CompanyDetails }) {
   const subTotal = order.items.reduce((sum, item) => sum + Number(item.price) * Number(item.quantity), 0);
   const postage = Number(order.postage) || 0;
   const roundOff = Number(order.totalAmount) - subTotal - postage;
@@ -85,20 +94,20 @@ export function InvoicePDF({ order, showVat = false }: { order: InvoiceOrder; sh
       <Page size="A4" style={s.page}>
         <View style={s.headerBar}>
           <View>
-            <Text style={s.brandName}>{COMPANY.name}</Text>
-            <Text style={s.brandTagline}>{COMPANY.tagline}</Text>
+            <Text style={s.brandName}>{company.name}</Text>
+            <Text style={s.brandTagline}>{company.tagline}</Text>
           </View>
           <Image src={LOGO_DATA_URI} style={s.logo} />
         </View>
 
         <View style={s.contactBar}>
-          <Text style={s.contactText}>Phone: {COMPANY.phone}</Text>
-          <Text style={s.contactText}>Website: {COMPANY.website}</Text>
-          <Text style={s.contactText}>Email: {COMPANY.email}</Text>
+          <Text style={s.contactText}>Phone: {company.phone}</Text>
+          <Text style={s.contactText}>Website: {company.website}</Text>
+          <Text style={s.contactText}>Email: {company.email}</Text>
         </View>
 
         <View style={{ paddingHorizontal: 40, paddingVertical: 8, backgroundColor: "#f5f5f5" }}>
-          <Text style={{ fontSize: 8, color: "#666" }}>{COMPANY.address}</Text>
+          <Text style={{ fontSize: 8, color: "#666" }}>{company.address}</Text>
         </View>
 
         <View style={[s.body, { paddingTop: 20 }]}>
@@ -166,8 +175,8 @@ export function InvoicePDF({ order, showVat = false }: { order: InvoiceOrder; sh
         </View>
 
         <View style={s.footer}>
-          <Text style={s.footerText}>Thank you for your order. For queries please contact {COMPANY.email}</Text>
-          <Text style={[s.footerText, { marginTop: 3 }]}>{COMPANY.name} | {COMPANY.address} | Phone: {COMPANY.phone}</Text>
+          <Text style={s.footerText}>Thank you for your order. For queries please contact {company.email}</Text>
+          <Text style={[s.footerText, { marginTop: 3 }]}>{company.name} | {company.address} | Phone: {company.phone}</Text>
         </View>
       </Page>
 
@@ -175,9 +184,9 @@ export function InvoicePDF({ order, showVat = false }: { order: InvoiceOrder; sh
       <Page size={[283.46, 425.2]} style={s.label}>
         <View style={s.labelBox}>
           <Text style={s.fromLabel}>FROM</Text>
-          <Text style={s.fromName}>{COMPANY.name}</Text>
-          <Text style={s.fromText}>{COMPANY.address}</Text>
-          <Text style={s.fromText}>Tel: {COMPANY.phone}</Text>
+          <Text style={s.fromName}>{company.name}</Text>
+          <Text style={s.fromText}>{company.address}</Text>
+          <Text style={s.fromText}>Tel: {company.phone}</Text>
 
           <View style={s.labelDivider} />
 
