@@ -107,8 +107,8 @@ export default function CustomersPage() {
         <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
         <div className="flex items-center gap-2">
           {isSuperAdmin && (
-            <Button variant="secondary" loading={exporting} onClick={handleExport} className="flex items-center gap-2">
-              <Download size={16} /> Export Excel
+            <Button variant="secondary" loading={exporting} onClick={handleExport} className="flex items-center gap-2" title="Export every customer with all their details and order summary">
+              <Download size={16} /> Export All Details
             </Button>
           )}
           {canAdd && (
@@ -134,7 +134,7 @@ export default function CustomersPage() {
           <p className="text-center text-gray-400 py-12 text-sm">No customers found. Add your first customer.</p>
         ) : (
           <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[720px] text-sm">
             <thead className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider">
               <tr>
                 {["Name", "Phone", "Email", "Address", "Status", ...(canViewCards ? ["Card Number", "Expiry", "Holder"] : []), ""].map((h) => (

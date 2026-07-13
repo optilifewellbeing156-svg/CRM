@@ -165,7 +165,8 @@ export default function PurchasesPage() {
         ) : purchases.length === 0 ? (
           <p className="text-center text-gray-400 py-12 text-sm">No purchases yet.</p>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] text-sm">
             <thead className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider">
               <tr>
                 {["Product", "Qty", "Unit Cost", "VAT", "Total", "Ref", "Date", ""].map((h) => (
@@ -203,6 +204,7 @@ export default function PurchasesPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

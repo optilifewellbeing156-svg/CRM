@@ -6,6 +6,17 @@ const GREEN = "#2D7D6F";
 const DARK_GREEN = "#1A4D44";
 const LIGHT_GREEN = "#E8F4F2";
 
+/** Single source of truth for our own company details, used on both the
+ * invoice and the courier shipping label. */
+const COMPANY = {
+  name: "OptiLifeWellbeing Ltd",
+  tagline: "Health & Wellness Products",
+  address: "PineTree House, Gardiners Close, Basildon SS14 3AN",
+  phone: "020 8264 9244",
+  website: "optilifewellbeing.co.uk",
+  email: "customercare@optilifewellbeing.co.uk",
+};
+
 const s = StyleSheet.create({
   page: { fontFamily: "Helvetica", fontSize: 10, color: "#333", backgroundColor: "#fff" },
   headerBar: { backgroundColor: DARK_GREEN, paddingHorizontal: 40, paddingVertical: 20, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
@@ -34,6 +45,20 @@ const s = StyleSheet.create({
   grandTotalValue: { fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK_GREEN, width: 80, textAlign: "right" },
   footer: { marginTop: 32, paddingHorizontal: 40, paddingVertical: 12, borderTopColor: "#ddd", borderTopWidth: 1 },
   footerText: { fontSize: 8, color: "#999", textAlign: "center" },
+
+  // ── 4x6" courier shipping label (portrait 288 x 432 pt) ──
+  label: { padding: 16, fontFamily: "Helvetica", color: "#000", backgroundColor: "#fff" },
+  labelBox: { flexGrow: 1, borderWidth: 2, borderColor: "#000", borderRadius: 6, padding: 16, flexDirection: "column" },
+  fromLabel: { fontSize: 7, letterSpacing: 1.5, color: "#555", fontFamily: "Helvetica-Bold", marginBottom: 3 },
+  fromName: { fontSize: 11, fontFamily: "Helvetica-Bold", color: "#000" },
+  fromText: { fontSize: 9, color: "#333", lineHeight: 1.35 },
+  labelDivider: { borderBottomWidth: 1.5, borderBottomColor: "#000", marginVertical: 14 },
+  toLabel: { fontSize: 10, letterSpacing: 2.5, color: "#000", fontFamily: "Helvetica-Bold", marginBottom: 8 },
+  toName: { fontSize: 22, fontFamily: "Helvetica-Bold", color: "#000", marginBottom: 8, lineHeight: 1.15 },
+  toText: { fontSize: 14, color: "#000", marginBottom: 4, lineHeight: 1.35 },
+  labelFooter: { marginTop: "auto", flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", borderTopWidth: 1.5, borderTopColor: "#000", paddingTop: 10 },
+  labelMetaLabel: { fontSize: 7, letterSpacing: 1, color: "#666", fontFamily: "Helvetica-Bold" },
+  labelMetaValue: { fontSize: 12, fontFamily: "Helvetica-Bold", color: "#000" },
 });
 
 export type InvoiceOrder = {
@@ -60,20 +85,20 @@ export function InvoicePDF({ order, showVat = false }: { order: InvoiceOrder; sh
       <Page size="A4" style={s.page}>
         <View style={s.headerBar}>
           <View>
-            <Text style={s.brandName}>OptiLifeWellbeing Ltd</Text>
-            <Text style={s.brandTagline}>Health & Wellness Products</Text>
+            <Text style={s.brandName}>{COMPANY.name}</Text>
+            <Text style={s.brandTagline}>{COMPANY.tagline}</Text>
           </View>
           <Image src={LOGO_DATA_URI} style={s.logo} />
         </View>
 
         <View style={s.contactBar}>
-          <Text style={s.contactText}>Phone: 020 8264 9244</Text>
-          <Text style={s.contactText}>Website: optilifewellbeing.co.uk</Text>
-          <Text style={s.contactText}>Email: customercare@optilifewellbeing.co.uk</Text>
+          <Text style={s.contactText}>Phone: {COMPANY.phone}</Text>
+          <Text style={s.contactText}>Website: {COMPANY.website}</Text>
+          <Text style={s.contactText}>Email: {COMPANY.email}</Text>
         </View>
 
         <View style={{ paddingHorizontal: 40, paddingVertical: 8, backgroundColor: "#f5f5f5" }}>
-          <Text style={{ fontSize: 8, color: "#666" }}>PineTree House, Gardiners Close, Basildon SS14 3AN</Text>
+          <Text style={{ fontSize: 8, color: "#666" }}>{COMPANY.address}</Text>
         </View>
 
         <View style={[s.body, { paddingTop: 20 }]}>
@@ -141,8 +166,36 @@ export function InvoicePDF({ order, showVat = false }: { order: InvoiceOrder; sh
         </View>
 
         <View style={s.footer}>
-          <Text style={s.footerText}>Thank you for your order. For queries please contact customercare@optilifewellbeing.co.uk</Text>
-          <Text style={[s.footerText, { marginTop: 3 }]}>OptiLifeWellbeing Ltd | PineTree House, Gardiners Close, Basildon SS14 3AN | Phone: 020 8264 9244</Text>
+          <Text style={s.footerText}>Thank you for your order. For queries please contact {COMPANY.email}</Text>
+          <Text style={[s.footerText, { marginTop: 3 }]}>{COMPANY.name} | {COMPANY.address} | Phone: {COMPANY.phone}</Text>
+        </View>
+      </Page>
+
+      {/* ── Page 2: 4x6" courier shipping label — stick this on the parcel ── */}
+      <Page size={[288, 432]} style={s.label}>
+        <View style={s.labelBox}>
+          <Text style={s.fromLabel}>FROM</Text>
+          <Text style={s.fromName}>{COMPANY.name}</Text>
+          <Text style={s.fromText}>{COMPANY.address}</Text>
+          <Text style={s.fromText}>Tel: {COMPANY.phone}</Text>
+
+          <View style={s.labelDivider} />
+
+          <Text style={s.toLabel}>SHIP TO</Text>
+          <Text style={s.toName}>{order.customer.name}</Text>
+          {order.customer.address ? <Text style={s.toText}>{order.customer.address}</Text> : null}
+          {order.customer.phone ? <Text style={s.toText}>Tel: {order.customer.phone}</Text> : null}
+
+          <View style={s.labelFooter}>
+            <View>
+              <Text style={s.labelMetaLabel}>ORDER</Text>
+              <Text style={s.labelMetaValue}>#{invoiceNo}</Text>
+            </View>
+            <View>
+              <Text style={[s.labelMetaLabel, { textAlign: "right" }]}>DATE</Text>
+              <Text style={s.labelMetaValue}>{date}</Text>
+            </View>
+          </View>
         </View>
       </Page>
     </Document>

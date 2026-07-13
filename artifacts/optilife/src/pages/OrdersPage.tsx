@@ -32,6 +32,24 @@ export default function OrdersPage() {
   const [exportTo, setExportTo] = useState("");
   const [exporting, setExporting] = useState(false);
 
+  const toISO = (d: Date) => d.toLocaleDateString("en-CA"); // YYYY-MM-DD, local
+  const currentMonth = exportFrom ? exportFrom.slice(0, 7) : "";
+
+  // Fill the range to cover a whole calendar month, e.g. "2026-07".
+  function selectMonth(month: string) {
+    if (!month) return;
+    const [y, m] = month.split("-").map(Number);
+    setExportFrom(toISO(new Date(y, m - 1, 1)));
+    setExportTo(toISO(new Date(y, m, 0))); // day 0 of next month = last day of this
+  }
+
+  function selectRelativeMonth(offset: number) {
+    const now = new Date();
+    const first = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+    setExportFrom(toISO(first));
+    setExportTo(toISO(new Date(first.getFullYear(), first.getMonth() + 1, 0)));
+  }
+
   async function handleExport() {
     setExporting(true);
     try {
@@ -85,42 +103,72 @@ export default function OrdersPage() {
       </div>
 
       {isPrivileged && (
-        <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 flex flex-wrap items-end gap-3">
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-500">From date</label>
-            <input
-              type="date"
-              value={exportFrom}
-              max={exportTo || undefined}
-              onChange={(e) => setExportFrom(e.target.value)}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary/30"
-            />
+        <div className="bg-card rounded-xl border border-border p-4 mb-6">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-muted-foreground">Pick a month</label>
+              <input
+                type="month"
+                value={currentMonth}
+                onChange={(e) => selectMonth(e.target.value)}
+                className="px-3 py-2 text-sm border border-input rounded-lg bg-background outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+            <div className="flex items-center gap-1.5 self-end pb-0.5">
+              <button
+                type="button"
+                onClick={() => selectRelativeMonth(0)}
+                className="px-3 py-2 text-xs font-medium rounded-lg bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              >
+                This month
+              </button>
+              <button
+                type="button"
+                onClick={() => selectRelativeMonth(-1)}
+                className="px-3 py-2 text-xs font-medium rounded-lg bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+              >
+                Last month
+              </button>
+            </div>
+
+            <div className="mx-1 hidden h-9 w-px self-end bg-border sm:block" />
+
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-muted-foreground">From date</label>
+              <input
+                type="date"
+                value={exportFrom}
+                max={exportTo || undefined}
+                onChange={(e) => setExportFrom(e.target.value)}
+                className="px-3 py-2 text-sm border border-input rounded-lg bg-background outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-muted-foreground">To date</label>
+              <input
+                type="date"
+                value={exportTo}
+                min={exportFrom || undefined}
+                onChange={(e) => setExportTo(e.target.value)}
+                className="px-3 py-2 text-sm border border-input rounded-lg bg-background outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+            <Button variant="secondary" loading={exporting} onClick={handleExport} className="flex items-center gap-2">
+              <Download size={16} /> Export Excel
+            </Button>
+            {(exportFrom || exportTo) && (
+              <button
+                type="button"
+                onClick={() => { setExportFrom(""); setExportTo(""); }}
+                className="text-sm text-muted-foreground hover:text-foreground self-center"
+              >
+                Clear
+              </button>
+            )}
           </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-500">To date</label>
-            <input
-              type="date"
-              value={exportTo}
-              min={exportFrom || undefined}
-              onChange={(e) => setExportTo(e.target.value)}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary/30"
-            />
-          </div>
-          <Button variant="secondary" loading={exporting} onClick={handleExport} className="flex items-center gap-2">
-            <Download size={16} /> Export Excel
-          </Button>
-          {(exportFrom || exportTo) && (
-            <button
-              type="button"
-              onClick={() => { setExportFrom(""); setExportTo(""); }}
-              className="text-sm text-gray-500 hover:text-gray-800 self-center"
-            >
-              Clear
-            </button>
-          )}
-          <span className="text-xs text-gray-400 self-center ml-auto">
-            Leave dates blank to export all orders. Export includes which user took each order.
-          </span>
+          <p className="text-xs text-muted-foreground mt-3">
+            Pick a month or set a custom range — leave both blank to export every order. The file lists one row per product line with quantity, unit price, line total, postage and order total.
+          </p>
         </div>
       )}
 
@@ -130,7 +178,8 @@ export default function OrdersPage() {
         ) : orders.length === 0 ? (
           <p className="text-center text-gray-400 py-12 text-sm">No orders yet. Create your first invoice.</p>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] text-sm">
             <thead className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider">
               <tr>
                 {["Invoice #", "Customer", "Total", "Status", "Payment", "Date", ""].map((h) => (
@@ -182,6 +231,7 @@ export default function OrdersPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

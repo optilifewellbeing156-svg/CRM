@@ -156,7 +156,8 @@ export default function SalesReportPage() {
               <div className="px-5 py-3 border-b">
                 <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-2"><BarChart3 size={16} /> Top Products</h2>
               </div>
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto">
+              <table className="w-full min-w-[560px] text-sm">
                 <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
                   <tr>
                     <th className="px-4 py-2 text-left">Product</th>
@@ -174,6 +175,7 @@ export default function SalesReportPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
 
@@ -182,7 +184,8 @@ export default function SalesReportPage() {
               <div className="px-5 py-3 border-b">
                 <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-2"><Users size={16} /> User Performance</h2>
               </div>
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto">
+              <table className="w-full min-w-[560px] text-sm">
                 <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
                   <tr>
                     <th className="px-4 py-2 text-left">User</th>
@@ -204,6 +207,7 @@ export default function SalesReportPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
 
@@ -214,7 +218,8 @@ export default function SalesReportPage() {
             {data.orders.length === 0 ? (
               <p className="text-center text-gray-400 py-8 text-sm">No orders in this period.</p>
             ) : (
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto">
+              <table className="w-full min-w-[640px] text-sm">
                 <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
                   <tr>
                     <th className="px-4 py-2 text-left">Invoice #</th>
@@ -242,6 +247,7 @@ export default function SalesReportPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
         </>

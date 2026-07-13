@@ -166,8 +166,8 @@ export default function OrderDetailPage({ id }: { id: string }) {
         )}
 
         {order.items && order.items.length > 0 && (
-          <div className="mb-6">
-            <table className="w-full text-sm">
+          <div className="mb-6 overflow-x-auto">
+            <table className="w-full min-w-[560px] text-sm">
               <thead className="bg-gray-50 text-xs text-gray-500">
                 <tr>
                   <th className="px-4 py-2 text-left">Product</th>

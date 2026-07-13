@@ -72,7 +72,7 @@ export type DashboardData = {
   totalRevenue: number;
   totalOrders: number;
   lowStockProducts: Product[];
-  dailyRevenue: { date: string; revenue: number }[];
+  dailyRevenue: { date: string; revenue: number; orders: number }[];
 };
 
 export type Me = {

@@ -110,7 +110,8 @@ export default function ProductsPage() {
         ) : filtered.length === 0 ? (
           <p className="text-center text-gray-400 py-12 text-sm">No products found.</p>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] text-sm">
             <thead className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider">
               <tr>
                 {["Name", "SKU", "Cost", "Selling Price", "Stock", ""].map((h) => (
@@ -158,6 +159,7 @@ export default function ProductsPage() {
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

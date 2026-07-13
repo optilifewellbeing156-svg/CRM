@@ -29,7 +29,8 @@ router.get("/dashboard", requirePermission("dashboard"), async (req: AuthRequest
         ? db.execute(sql`
             SELECT
               DATE(created_at)::text AS date,
-              SUM(total_amount)::float AS revenue
+              SUM(total_amount)::float AS revenue,
+              COUNT(*)::int AS orders
             FROM orders
             WHERE created_at >= NOW() - INTERVAL '30 days'
             GROUP BY DATE(created_at)
@@ -38,7 +39,8 @@ router.get("/dashboard", requirePermission("dashboard"), async (req: AuthRequest
         : db.execute(sql`
             SELECT
               DATE(created_at)::text AS date,
-              SUM(total_amount)::float AS revenue
+              SUM(total_amount)::float AS revenue,
+              COUNT(*)::int AS orders
             FROM orders
             WHERE created_at >= NOW() - INTERVAL '30 days'
               AND created_by_id = ${userId}
@@ -51,7 +53,7 @@ router.get("/dashboard", requirePermission("dashboard"), async (req: AuthRequest
       totalRevenue: Number(revenueRows[0]?.total ?? 0),
       totalOrders: Number(totalOrdersRows[0]?.count ?? 0),
       lowStockProducts: lowStockProducts.rows,
-      dailyRevenue: (dailyRevenue.rows as any[]).map(r => ({ date: r.date, revenue: Number(r.revenue) })),
+      dailyRevenue: (dailyRevenue.rows as any[]).map(r => ({ date: r.date, revenue: Number(r.revenue), orders: Number(r.orders) })),
     });
   } catch (e) {
     req.log.error(e);
