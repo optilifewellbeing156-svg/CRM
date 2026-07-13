@@ -46,7 +46,7 @@ const s = StyleSheet.create({
   footer: { marginTop: 32, paddingHorizontal: 40, paddingVertical: 12, borderTopColor: "#ddd", borderTopWidth: 1 },
   footerText: { fontSize: 8, color: "#999", textAlign: "center" },
 
-  // ── 4x6" courier shipping label (portrait 288 x 432 pt) ──
+  // ── 10x15 cm courier shipping label (portrait ~283.46 x 425.20 pt) ──
   label: { padding: 16, fontFamily: "Helvetica", color: "#000", backgroundColor: "#fff" },
   labelBox: { flexGrow: 1, borderWidth: 2, borderColor: "#000", borderRadius: 6, padding: 16, flexDirection: "column" },
   fromLabel: { fontSize: 7, letterSpacing: 1.5, color: "#555", fontFamily: "Helvetica-Bold", marginBottom: 3 },
@@ -171,8 +171,8 @@ export function InvoicePDF({ order, showVat = false }: { order: InvoiceOrder; sh
         </View>
       </Page>
 
-      {/* ── Page 2: 4x6" courier shipping label — stick this on the parcel ── */}
-      <Page size={[288, 432]} style={s.label}>
+      {/* ── Page 2: 10x15 cm courier shipping label — stick this on the parcel ── */}
+      <Page size={[283.46, 425.2]} style={s.label}>
         <View style={s.labelBox}>
           <Text style={s.fromLabel}>FROM</Text>
           <Text style={s.fromName}>{COMPANY.name}</Text>
