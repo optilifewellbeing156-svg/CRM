@@ -111,7 +111,7 @@ export default function ProductsPage() {
           <p className="text-center text-gray-400 py-12 text-sm">No products found.</p>
         ) : (
           <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] text-sm">
+          <table className="w-full sm:min-w-[720px] text-sm table-cards">
             <thead className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider">
               <tr>
                 {["Name", "SKU", "Cost", "Selling Price", "Stock", ""].map((h) => (
@@ -124,11 +124,11 @@ export default function ProductsPage() {
                 const lowStock = p.stockQuantity <= p.lowStockThreshold;
                 return (
                   <tr key={p.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium">{p.name}</td>
-                    <td className="px-4 py-3 text-gray-500 font-mono text-xs">{p.sku}</td>
-                    <td className="px-4 py-3">£{Number(p.costPrice).toFixed(2)}</td>
-                    <td className="px-4 py-3">£{Number(p.sellingPrice).toFixed(2)}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 font-medium" data-label="Name">{p.name}</td>
+                    <td className="px-4 py-3 text-gray-500 font-mono text-xs" data-label="SKU">{p.sku}</td>
+                    <td className="px-4 py-3" data-label="Cost">£{Number(p.costPrice).toFixed(2)}</td>
+                    <td className="px-4 py-3" data-label="Selling Price">£{Number(p.sellingPrice).toFixed(2)}</td>
+                    <td className="px-4 py-3" data-label="Stock">
                       {lowStock ? (
                         <Badge variant="warning">{p.stockQuantity} ⚠</Badge>
                       ) : (

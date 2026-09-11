@@ -166,7 +166,7 @@ export default function PurchasesPage() {
           <p className="text-center text-gray-400 py-12 text-sm">No purchases yet.</p>
         ) : (
           <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] text-sm">
+          <table className="w-full sm:min-w-[720px] text-sm table-cards">
             <thead className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider">
               <tr>
                 {["Product", "Qty", "Unit Cost", "VAT", "Total", "Ref", "Date", ""].map((h) => (
@@ -177,15 +177,15 @@ export default function PurchasesPage() {
             <tbody className="divide-y divide-gray-100">
               {purchases.map((p) => (
                 <tr key={p.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium">{p.product?.name}</td>
-                  <td className="px-4 py-3">{p.quantity}</td>
-                  <td className="px-4 py-3">£{Number(p.unitCost).toFixed(2)}</td>
-                  <td className="px-4 py-3 text-gray-500">
+                  <td className="px-4 py-3 font-medium" data-label="Product">{p.product?.name}</td>
+                  <td className="px-4 py-3" data-label="Qty">{p.quantity}</td>
+                  <td className="px-4 py-3" data-label="Unit Cost">£{Number(p.unitCost).toFixed(2)}</td>
+                  <td className="px-4 py-3 text-gray-500" data-label="VAT">
                     {p.vatEnabled ? `${Number(p.vatRate)}% (£${Number(p.vatAmount).toFixed(2)})` : "—"}
                   </td>
-                  <td className="px-4 py-3 font-medium">£{Number(p.totalCost).toFixed(2)}</td>
-                  <td className="px-4 py-3 text-gray-500">{p.reference ?? "—"}</td>
-                  <td className="px-4 py-3 text-gray-500">{new Date(p.createdAt).toLocaleDateString("en-GB")}</td>
+                  <td className="px-4 py-3 font-medium" data-label="Total">£{Number(p.totalCost).toFixed(2)}</td>
+                  <td className="px-4 py-3 text-gray-500" data-label="Ref">{p.reference ?? "—"}</td>
+                  <td className="px-4 py-3 text-gray-500" data-label="Date">{new Date(p.createdAt).toLocaleDateString("en-GB")}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2 justify-end">
                       {canEdit && (
@@ -219,30 +219,30 @@ export default function PurchasesPage() {
             </div>
             {lines.map((l, idx) => (
               <div key={l.id} className="grid grid-cols-12 gap-2 items-center mb-2">
-                <div className="col-span-5">
+                <div className="col-span-12 sm:col-span-5">
                   <select value={l.productId} onChange={(e) => updateLine(l.id, "productId", e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
                     <option value="">Product...</option>
                     {products.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>)}
                   </select>
                 </div>
-                <div className="col-span-3">
+                <div className="col-span-5 sm:col-span-3">
                   <input type="number" placeholder="Qty" value={l.quantity} onChange={(e) => updateLine(l.id, "quantity", e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
                 </div>
-                <div className="col-span-3">
+                <div className="col-span-5 sm:col-span-3">
                   <input type="number" step="0.01" placeholder="Cost £" value={l.unitCost} onChange={(e) => updateLine(l.id, "unitCost", e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
                 </div>
                 <button onClick={() => setLines((prev) => prev.filter((x) => x.id !== l.id))} disabled={lines.length === 1}
-                  className="col-span-1 p-1 text-gray-400 hover:text-red-500 disabled:opacity-30">
+                  className="col-span-2 sm:col-span-1 p-1 text-gray-400 hover:text-red-500 disabled:opacity-30">
                   <X size={14} />
                 </button>
               </div>
             ))}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-sm font-medium text-gray-700 mb-1 block">Reference</label>
               <input value={addRef} onChange={(e) => setAddRef(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Optional" />
@@ -278,7 +278,7 @@ export default function PurchasesPage() {
               {products.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>)}
             </select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-sm font-medium text-gray-700 mb-1 block">Quantity</label>
               <input type="number" value={editQty} onChange={(e) => setEditQty(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
@@ -288,7 +288,7 @@ export default function PurchasesPage() {
               <input type="number" step="0.01" value={editCost} onChange={(e) => setEditCost(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-sm font-medium text-gray-700 mb-1 block">Reference</label>
               <input value={editRef} onChange={(e) => setEditRef(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />

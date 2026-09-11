@@ -117,7 +117,7 @@ export default function CustomersPage() {
           <p className="text-center text-gray-400 py-12 text-sm">No customers found. Add your first customer.</p>
         ) : (
           <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] text-sm">
+          <table className="w-full sm:min-w-[720px] text-sm table-cards">
             <thead className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider">
               <tr>
                 {["Name", "Phone", "Email", "Address", "Status", ...(canViewCards ? ["Card Number", "Expiry", "Holder"] : []), ""].map((h) => (
@@ -128,11 +128,11 @@ export default function CustomersPage() {
             <tbody className="divide-y divide-gray-100">
               {filtered.map((c) => (
                 <tr key={c.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium">{c.name}</td>
-                  <td className="px-4 py-3 text-gray-500">{c.phone ?? "—"}</td>
-                  <td className="px-4 py-3 text-gray-500">{c.email ?? "—"}</td>
-                  <td className="px-4 py-3 text-gray-500">{c.address ?? "—"}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 font-medium" data-label="Name">{c.name}</td>
+                  <td className="px-4 py-3 text-gray-500" data-label="Phone">{c.phone ?? "—"}</td>
+                  <td className="px-4 py-3 text-gray-500" data-label="Email">{c.email ?? "—"}</td>
+                  <td className="px-4 py-3 text-gray-500" data-label="Address">{c.address ?? "—"}</td>
+                  <td className="px-4 py-3" data-label="Status">
                     {c.status === "dnc" ? (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">
                         <Ban size={11} /> DNC
@@ -144,9 +144,9 @@ export default function CustomersPage() {
                     )}
                   </td>
                   {canViewCards && <>
-                    <td className="px-4 py-3 text-gray-500 font-mono text-xs">{c.cardNumber ?? "—"}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{c.cardExpiry ?? "—"}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{c.cardHolder ?? "—"}</td>
+                    <td className="px-4 py-3 text-gray-500 font-mono text-xs" data-label="Card Number">{c.cardNumber ?? "—"}</td>
+                    <td className="px-4 py-3 text-gray-500 text-xs" data-label="Expiry">{c.cardExpiry ?? "—"}</td>
+                    <td className="px-4 py-3 text-gray-500 text-xs" data-label="Holder">{c.cardHolder ?? "—"}</td>
                   </>}
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2 justify-end">

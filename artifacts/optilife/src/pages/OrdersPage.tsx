@@ -179,7 +179,7 @@ export default function OrdersPage() {
           <p className="text-center text-gray-400 py-12 text-sm">No orders yet. Create your first invoice.</p>
         ) : (
           <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] text-sm">
+          <table className="w-full sm:min-w-[720px] text-sm table-cards">
             <thead className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider">
               <tr>
                 {["Invoice #", "Customer", "Total", "Status", "Payment", "Date", ""].map((h) => (
@@ -190,10 +190,10 @@ export default function OrdersPage() {
             <tbody className="divide-y divide-gray-100">
               {orders.map((o) => (
                 <tr key={o.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-mono text-xs">{o.id.slice(0, 8).toUpperCase()}</td>
-                  <td className="px-4 py-3 font-medium">{o.customer?.name}</td>
-                  <td className="px-4 py-3">£{Number(o.totalAmount).toFixed(2)}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 font-mono text-xs" data-label="Invoice #">{o.id.slice(0, 8).toUpperCase()}</td>
+                  <td className="px-4 py-3 font-medium" data-label="Customer">{o.customer?.name}</td>
+                  <td className="px-4 py-3" data-label="Total">£{Number(o.totalAmount).toFixed(2)}</td>
+                  <td className="px-4 py-3" data-label="Status">
                     {o.status ? (
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_BADGE[o.status] ?? "bg-gray-100 text-gray-700"}`}>
                         {o.status}
@@ -202,12 +202,12 @@ export default function OrdersPage() {
                       <span className="text-gray-400 text-xs">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3" data-label="Payment">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${o.isPaid ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
                       {o.isPaid ? "PAID" : "UNPAID"}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-gray-500">
+                  <td className="px-4 py-3 text-gray-500" data-label="Date">
                     {new Date(o.createdAt).toLocaleDateString("en-GB")}
                   </td>
                   <td className="px-4 py-3">

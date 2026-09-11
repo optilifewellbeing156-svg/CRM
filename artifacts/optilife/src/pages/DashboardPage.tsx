@@ -426,7 +426,7 @@ export default function DashboardPage() {
             <Badge variant="warning" className="ml-auto">{data.lowStockProducts.length}</Badge>
           </div>
           <div className="overflow-x-auto">
-          <table className="w-full min-w-[480px] text-sm">
+          <table className="w-full sm:min-w-[480px] text-sm table-cards">
             <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
               <tr>
                 <th className="px-5 py-2.5 text-left font-medium">Product</th>
@@ -437,9 +437,9 @@ export default function DashboardPage() {
             <tbody className="divide-y divide-border">
               {data.lowStockProducts.map((p) => (
                 <tr key={p.id} className="transition-colors hover:bg-muted/40">
-                  <td className="px-5 py-3 font-medium text-foreground">{p.name}</td>
-                  <td className="px-5 py-3 text-muted-foreground">{p.sku}</td>
-                  <td className="px-5 py-3 text-right">
+                  <td className="px-5 py-3 font-medium text-foreground" data-label="Product">{p.name}</td>
+                  <td className="px-5 py-3 text-muted-foreground" data-label="SKU">{p.sku}</td>
+                  <td className="px-5 py-3 text-right" data-label="Stock">
                     <Badge variant="warning">{p.stockQuantity} left</Badge>
                   </td>
                 </tr>

@@ -1,6 +1,7 @@
 import { useLocation, Link } from "wouter";
 import { LayoutDashboard, Package, Users, ShoppingCart, UsersRound, BarChart3, PackagePlus, Settings, X } from "lucide-react";
 import { useMe } from "@/hooks/useMe";
+import { InstallAppButton } from "@/components/features/pwa/InstallAppButton";
 
 const allNavItems = [
   { href: "/dashboard", label: "Dashboard", Icon: LayoutDashboard, permission: "dashboard" },
@@ -30,7 +31,10 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   });
 
   const sidebarContent = (
-    <aside className="w-60 flex flex-col h-full" style={{ backgroundColor: "hsl(170,42%,30%)" }}>
+    <aside
+      className="w-60 flex flex-col h-full pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+      style={{ backgroundColor: "hsl(170,42%,30%)" }}
+    >
       <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <img src="/logo.png" alt="" className="h-9 w-9 shrink-0" />
@@ -60,6 +64,9 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           );
         })}
       </nav>
+      <div className="px-3 pb-4 pt-2">
+        <InstallAppButton variant="sidebar" />
+      </div>
     </aside>
   );
 

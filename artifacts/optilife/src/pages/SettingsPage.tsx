@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Spinner } from "@/components/ui/Spinner";
 import { Button } from "@/components/ui/Button";
+import { InstallAppButton } from "@/components/features/pwa/InstallAppButton";
 
 type Company = {
   name: string;
@@ -168,6 +169,9 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
+
+          {/* Install as an app */}
+          <InstallAppButton variant="card" />
         </div>
       )}
     </div>

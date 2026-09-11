@@ -209,7 +209,7 @@ export function OrderForm({ order }: { order?: EditableOrder } = {}) {
         </select>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Date</label>
           <input
@@ -256,7 +256,7 @@ export function OrderForm({ order }: { order?: EditableOrder } = {}) {
         <div className="space-y-2">
           {items.map((item, i) => (
             <div key={i} className="grid grid-cols-12 gap-2 items-end">
-              <div className="col-span-5">
+              <div className="col-span-12 sm:col-span-5">
                 <select
                   value={item.productId}
                   onChange={(e) => updateLine(i, "productId", e.target.value)}
@@ -271,7 +271,7 @@ export function OrderForm({ order }: { order?: EditableOrder } = {}) {
                   ))}
                 </select>
               </div>
-              <div className="col-span-2">
+              <div className="col-span-5 sm:col-span-2">
                 <input
                   type="number"
                   min="1"
@@ -282,7 +282,7 @@ export function OrderForm({ order }: { order?: EditableOrder } = {}) {
                   required
                 />
               </div>
-              <div className="col-span-4">
+              <div className="col-span-5 sm:col-span-4">
                 <input
                   type="number"
                   step="0.01"
@@ -294,7 +294,7 @@ export function OrderForm({ order }: { order?: EditableOrder } = {}) {
                   required
                 />
               </div>
-              <div className="col-span-1">
+              <div className="col-span-2 sm:col-span-1">
                 <button
                   type="button"
                   onClick={() => removeLine(i)}
