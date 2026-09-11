@@ -167,7 +167,7 @@ export default function OrderDetailPage({ id }: { id: string }) {
 
         {order.items && order.items.length > 0 && (
           <div className="mb-6 overflow-x-auto">
-            <table className="w-full min-w-[560px] text-sm">
+            <table className="w-full sm:min-w-[560px] text-sm table-cards">
               <thead className="bg-gray-50 text-xs text-gray-500">
                 <tr>
                   <th className="px-4 py-2 text-left">Product</th>
@@ -179,10 +179,10 @@ export default function OrderDetailPage({ id }: { id: string }) {
               <tbody className="divide-y divide-gray-100">
                 {order.items.map((item) => (
                   <tr key={item.id}>
-                    <td className="px-4 py-3">{item.product?.name ?? item.productId}</td>
-                    <td className="px-4 py-3 text-right">{Number(item.quantity)}</td>
-                    <td className="px-4 py-3 text-right">£{Number(item.price).toFixed(2)}</td>
-                    <td className="px-4 py-3 text-right">£{(Number(item.quantity) * Number(item.price)).toFixed(2)}</td>
+                    <td className="px-4 py-3" data-label="Product">{item.product?.name ?? item.productId}</td>
+                    <td className="px-4 py-3 text-right" data-label="Qty">{Number(item.quantity)}</td>
+                    <td className="px-4 py-3 text-right" data-label="Unit Price">£{Number(item.price).toFixed(2)}</td>
+                    <td className="px-4 py-3 text-right" data-label="Subtotal">£{(Number(item.quantity) * Number(item.price)).toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>

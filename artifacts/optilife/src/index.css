@@ -86,3 +86,122 @@
     background-color: hsl(160, 30%, 97%);
   }
 }
+
+/*
+ * Mobile card tables.
+ *
+ * Below 640px a wide data table stops being a table and becomes a stack of
+ * cards: the header row is hidden and each cell carries its own label, taken
+ * from the `data-label` attribute the pages set. Cells without a data-label
+ * (action buttons, empty-state colspan rows) are left alone.
+ *
+ * Deliberately written outside @layer so it beats the Tailwind utilities
+ * already on these cells — unlayered rules win over layered ones in the
+ * cascade, which saves littering the markup with `max-sm:` overrides.
+ */
+@media (max-width: 639px) {
+  table.table-cards,
+  table.table-cards tbody,
+  table.table-cards tbody tr,
+  table.table-cards tbody td {
+    display: block;
+    width: 100%;
+  }
+
+  table.table-cards {
+    min-width: 0;
+    border-collapse: separate;
+  }
+
+  table.table-cards thead {
+    display: none;
+  }
+
+  table.table-cards tbody tr {
+    margin-bottom: 0.625rem;
+    padding: 0.25rem 0.875rem;
+    border: 1px solid hsl(160 15% 88%);
+    border-radius: 0.75rem;
+    background-color: hsl(160 30% 97%);
+  }
+
+  table.table-cards tbody tr:last-child {
+    margin-bottom: 0;
+  }
+
+  table.table-cards tbody td {
+    padding: 0.5rem 0;
+    border: 0;
+  }
+
+  /* Hairline between fields within a card. */
+  table.table-cards tbody td + td {
+    border-top: 1px solid hsl(160 15% 91%);
+  }
+
+  /* A labelled cell becomes a label/value row. */
+  table.table-cards tbody td[data-label] {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    text-align: right;
+  }
+
+  table.table-cards tbody td[data-label]::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    text-align: left;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: hsl(170 10% 50%);
+  }
+
+  /* Empty-state rows span the whole table and stay centred messages. */
+  table.table-cards tbody td[colspan] {
+    padding: 1rem 0;
+  }
+
+  table.table-cards tbody td[colspan]::before {
+    content: none;
+  }
+
+  /* The unlabelled trailing cell is the row's actions. Its icon buttons are
+     15px glyphs, far under the 44px a fingertip needs, so pad them out here
+     rather than inflating them on desktop too. */
+  table.table-cards tbody td:not([data-label]) > div {
+    justify-content: flex-end;
+  }
+
+  table.table-cards tbody td:not([data-label]) a,
+  table.table-cards tbody td:not([data-label]) button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
+
+  /* A totals footer collapses to a single label/value line under the cards. */
+  table.table-cards tfoot,
+  table.table-cards tfoot td {
+    display: block;
+    width: 100%;
+  }
+
+  table.table-cards tfoot tr {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 0.875rem 0.25rem;
+  }
+
+  table.table-cards tfoot td {
+    width: auto;
+    padding: 0;
+    border: 0;
+  }
+}

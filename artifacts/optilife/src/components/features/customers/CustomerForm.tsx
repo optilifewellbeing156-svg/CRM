@@ -51,7 +51,7 @@ export function CustomerForm({ initial, onSuccess }: CustomerFormProps) {
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Card Details</p>
         <div className="space-y-3">
           <Input label="Card Number" value={cardNumber ?? ""} onChange={(e) => setCardNumber(e.target.value)} placeholder="1234 5678 9012 3456" maxLength={19} />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Expiry (MM/YY)" value={cardExpiry ?? ""} onChange={(e) => setCardExpiry(e.target.value)} placeholder="MM/YY" maxLength={5} />
             <Input label="Card Holder Name" value={cardHolder ?? ""} onChange={(e) => setCardHolder(e.target.value)} placeholder="Name on card" />
           </div>

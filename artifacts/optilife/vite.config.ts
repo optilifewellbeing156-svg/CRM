@@ -60,5 +60,15 @@ export default defineConfig({
     port,
     host: "0.0.0.0",
     allowedHosts: true,
+    // Mirrors server.proxy so `pnpm build && pnpm serve` is a faithful local
+    // stand-in for the Netlify deploy — which is the only way to exercise the
+    // service worker, since it needs HTTPS or localhost to register.
+    proxy: {
+      "/api": {
+        target: `http://localhost:${process.env.API_PORT ?? 8080}`,
+        changeOrigin: true,
+        cookieDomainRewrite: "localhost",
+      },
+    },
   },
 });

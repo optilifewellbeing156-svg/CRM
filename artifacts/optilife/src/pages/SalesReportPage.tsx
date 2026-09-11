@@ -157,7 +157,7 @@ export default function SalesReportPage() {
                 <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-2"><BarChart3 size={16} /> Top Products</h2>
               </div>
               <div className="overflow-x-auto">
-              <table className="w-full min-w-[560px] text-sm">
+              <table className="w-full sm:min-w-[560px] text-sm table-cards">
                 <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
                   <tr>
                     <th className="px-4 py-2 text-left">Product</th>
@@ -168,9 +168,9 @@ export default function SalesReportPage() {
                 <tbody className="divide-y divide-gray-100">
                   {data.topProducts.map((p) => (
                     <tr key={p.name} className="hover:bg-gray-50">
-                      <td className="px-4 py-3">{p.name}</td>
-                      <td className="px-4 py-3 text-right">{p.unitsSold}</td>
-                      <td className="px-4 py-3 text-right font-medium">£{p.revenue.toFixed(2)}</td>
+                      <td className="px-4 py-3" data-label="Product">{p.name}</td>
+                      <td className="px-4 py-3 text-right" data-label="Units Sold">{p.unitsSold}</td>
+                      <td className="px-4 py-3 text-right font-medium" data-label="Revenue">£{p.revenue.toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -185,7 +185,7 @@ export default function SalesReportPage() {
                 <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-2"><Users size={16} /> User Performance</h2>
               </div>
               <div className="overflow-x-auto">
-              <table className="w-full min-w-[560px] text-sm">
+              <table className="w-full sm:min-w-[560px] text-sm table-cards">
                 <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
                   <tr>
                     <th className="px-4 py-2 text-left">User</th>
@@ -198,11 +198,11 @@ export default function SalesReportPage() {
                 <tbody className="divide-y divide-gray-100">
                   {data.userReport.map((u) => (
                     <tr key={u.userId} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-medium">{u.username}</td>
-                      <td className="px-4 py-3 text-right">{u.totalOrders}</td>
-                      <td className="px-4 py-3 text-right">£{u.totalSales.toFixed(2)}</td>
-                      <td className="px-4 py-3 text-right">{u.commissionRate}%</td>
-                      <td className="px-4 py-3 text-right font-medium">£{u.commission.toFixed(2)}</td>
+                      <td className="px-4 py-3 font-medium" data-label="User">{u.username}</td>
+                      <td className="px-4 py-3 text-right" data-label="Orders">{u.totalOrders}</td>
+                      <td className="px-4 py-3 text-right" data-label="Total Sales">£{u.totalSales.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right" data-label="Commission Rate">{u.commissionRate}%</td>
+                      <td className="px-4 py-3 text-right font-medium" data-label="Commission">£{u.commission.toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -219,7 +219,7 @@ export default function SalesReportPage() {
               <p className="text-center text-gray-400 py-8 text-sm">No orders in this period.</p>
             ) : (
               <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px] text-sm">
+              <table className="w-full sm:min-w-[640px] text-sm table-cards">
                 <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
                   <tr>
                     <th className="px-4 py-2 text-left">Invoice #</th>
@@ -233,14 +233,14 @@ export default function SalesReportPage() {
                 <tbody className="divide-y divide-gray-100">
                   {data.orders.map((o) => (
                     <tr key={o.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-mono text-xs">{o.id.slice(0, 8).toUpperCase()}</td>
-                      <td className="px-4 py-3">{o.customer}</td>
-                      <td className="px-4 py-3 text-gray-500">{o.createdBy ?? "—"}</td>
-                      <td className={`px-4 py-3 text-right font-medium ${o.totalAmount < 0 ? "text-red-600" : ""}`}>
+                      <td className="px-4 py-3 font-mono text-xs" data-label="Invoice #">{o.id.slice(0, 8).toUpperCase()}</td>
+                      <td className="px-4 py-3" data-label="Customer">{o.customer}</td>
+                      <td className="px-4 py-3 text-gray-500" data-label="Order Taken By">{o.createdBy ?? "—"}</td>
+                      <td className={`px-4 py-3 text-right font-medium ${o.totalAmount < 0 ? "text-red-600" : ""}`} data-label="Total">
                         {o.totalAmount < 0 ? `-£${Math.abs(o.totalAmount).toFixed(2)}` : `£${o.totalAmount.toFixed(2)}`}
                       </td>
-                      <td className="px-4 py-3 text-gray-500">{new Date(o.createdAt).toLocaleDateString("en-GB")}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 text-gray-500" data-label="Date">{new Date(o.createdAt).toLocaleDateString("en-GB")}</td>
+                      <td className="px-4 py-3" data-label="Status">
                         <Badge variant={STATUS_VARIANT[o.status] ?? "default"}>{o.status}</Badge>
                       </td>
                     </tr>

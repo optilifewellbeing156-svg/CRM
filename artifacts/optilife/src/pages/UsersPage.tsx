@@ -126,7 +126,7 @@ export default function UsersPage() {
           <p className="text-center text-gray-400 py-12 text-sm">No users yet.</p>
         ) : (
           <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-sm">
+          <table className="w-full sm:min-w-[640px] text-sm table-cards">
             <thead className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider">
               <tr>
                 {["Username", "Role", "Status", "Commission", ""].map((h) => (
@@ -137,19 +137,19 @@ export default function UsersPage() {
             <tbody className="divide-y divide-gray-100">
               {users.map((u) => (
                 <tr key={u.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium">{u.username}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 font-medium" data-label="Username">{u.username}</td>
+                  <td className="px-4 py-3" data-label="Role">
                     <Badge variant={ROLE_BADGE[u.role] ?? "success"}>
                       {u.role === "SUPER_ADMIN" ? "Owner" : u.role === "ADMIN" ? "Admin" : "User"}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3" data-label="Status">
                     {u.isActive
                       ? <span className="flex items-center gap-1 text-green-600 text-xs"><CheckCircle size={12} /> Active</span>
                       : <span className="flex items-center gap-1 text-red-500 text-xs"><XCircle size={12} /> Inactive</span>
                     }
                   </td>
-                  <td className="px-4 py-3 text-gray-500">{Number(u.commissionRate)}%</td>
+                  <td className="px-4 py-3 text-gray-500" data-label="Commission">{Number(u.commissionRate)}%</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2 justify-end">
                       {isSuperAdmin && u.id !== me?.userId && (

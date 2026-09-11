@@ -19,3 +19,17 @@
   from   = "/*"
   to     = "/index.html"
   status = 200
+
+# The service worker must never be served from cache, or a deploy can't reach
+# clients that already have the old one registered.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+    Service-Worker-Allowed = "/"
+
+[[headers]]
+  for = "/manifest.webmanifest"
+  [headers.values]
+    Content-Type  = "application/manifest+json; charset=utf-8"
+    Cache-Control = "public, max-age=0, must-revalidate"

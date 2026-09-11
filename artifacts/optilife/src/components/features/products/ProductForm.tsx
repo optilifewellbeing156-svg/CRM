@@ -58,7 +58,7 @@ export function ProductForm({ initial, onSuccess }: ProductFormProps) {
     <form onSubmit={handleSubmit} className="space-y-4">
       <Input label="Product Name" value={name} onChange={(e) => setName(e.target.value)} required />
       <Input label="SKU" value={sku} onChange={(e) => setSku(e.target.value)} required />
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Input
           label="Cost Price (£)"
           type="number"
