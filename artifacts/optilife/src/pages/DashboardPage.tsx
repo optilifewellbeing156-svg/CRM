@@ -1,29 +1,54 @@
-import { useState, useEffect } from "react";
-import { TrendingUp, TrendingDown, ShoppingCart, AlertTriangle, Download, Receipt } from "lucide-react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { TrendingUp, TrendingDown, ShoppingCart, AlertTriangle, Download, Receipt, CalendarDays, UserRoundX, ChevronRight } from "lucide-react";
+import type { DateRange } from "react-day-picker";
+import {
+  startOfDay, endOfDay, addDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, format,
+} from "date-fns";
 import { Spinner } from "@/components/ui/Spinner";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/card";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CustomerOrderHistoryModal } from "@/components/features/customers/CustomerOrderHistoryModal";
 import { useMe } from "@/hooks/useMe";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import type { DashboardData } from "@/types";
 
-const gbp = (n: number) => `£${n.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+type Preset = "today" | "week" | "month" | "custom";
 
-/** % change of `key` over the last 7 days vs the previous 7 days. Null when the
- * prior window has no data (a delta would be meaningless / infinite). */
-function computeTrend(rows: DashboardData["dailyRevenue"], key: "revenue" | "orders"): number | null {
-  const now = Date.now();
-  const DAY = 86_400_000;
-  let last = 0, prev = 0;
-  for (const r of rows) {
-    const age = now - new Date(r.date).getTime();
-    if (age <= 7 * DAY) last += r[key];
-    else if (age <= 14 * DAY) prev += r[key];
+/** Resolve a preset (or a custom range) into the [from, to) window we query.
+ *  `to` is exclusive, so an inclusive end date is pushed to the start of the next day. */
+function resolveWindow(preset: Preset, custom?: DateRange): { from: Date; to: Date } {
+  const now = new Date();
+  if (preset === "today") return { from: startOfDay(now), to: addDays(startOfDay(now), 1) };
+  if (preset === "week") {
+    const start = startOfWeek(now, { weekStartsOn: 1 });
+    return { from: start, to: addDays(start, 7) };
   }
-  if (prev === 0) return null;
-  return ((last - prev) / prev) * 100;
+  if (preset === "month") {
+    return { from: startOfMonth(now), to: addDays(startOfDay(endOfMonth(now)), 1) };
+  }
+  const start = custom?.from ? startOfDay(custom.from) : startOfDay(now);
+  const end = custom?.to ? custom.to : custom?.from ?? now;
+  return { from: start, to: addDays(startOfDay(end), 1) };
 }
+
+function windowLabel(preset: Preset, w: { from: Date; to: Date }): string {
+  const lastDay = addDays(w.to, -1);
+  if (preset === "today") return format(w.from, "d MMM yyyy");
+  const sameYear = w.from.getFullYear() === lastDay.getFullYear();
+  return `${format(w.from, sameYear ? "d MMM" : "d MMM yyyy")} – ${format(lastDay, "d MMM yyyy")}`;
+}
+
+/** % change vs the immediately preceding window of equal length.
+ *  Null when the prior window had nothing (a delta would be meaningless). */
+function pctChange(current: number, previous: number): number | null {
+  if (!previous) return null;
+  return ((current - previous) / previous) * 100;
+}
+
+const gbp = (n: number) => `£${n.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 function TrendChip({ pct }: { pct: number }) {
   const up = pct >= 0;
@@ -152,7 +177,10 @@ function Toggle<T extends string | number>({
 export default function DashboardPage() {
   const me = useMe();
   const [data, setData] = useState<DashboardData | null>(null);
-  const [range, setRange] = useState<7 | 30>(30);
+  const [preset, setPreset] = useState<Preset>("week");
+  const [customRange, setCustomRange] = useState<DateRange | undefined>();
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [historyCustomer, setHistoryCustomer] = useState<{ id: string; name: string } | null>(null);
   const [metric, setMetric] = useState<"revenue" | "orders">("revenue");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -177,28 +205,100 @@ export default function DashboardPage() {
     }
   }
 
-  useEffect(() => {
-    fetch("/api/dashboard", { credentials: "include" })
+  // react-day-picker reports `to === from` after the first click, so a range is
+  // only treated as settled once the picker closes — that also lets a deliberate
+  // single-day range through.
+  const pendingCustom = preset === "custom" && (pickerOpen || !customRange?.from);
+  const period = useMemo(
+    () => resolveWindow(preset, customRange),
+    [preset, customRange?.from?.getTime(), customRange?.to?.getTime()],
+  );
+
+  const reqId = useRef(0);
+  const load = useCallback((w: { from: Date; to: Date }) => {
+    const id = ++reqId.current;
+    const fresh = () => id === reqId.current;
+    setLoading(true);
+    setError(false);
+    const qs = new URLSearchParams({ from: w.from.toISOString(), to: w.to.toISOString() });
+    fetch(`/api/dashboard?${qs}`, { credentials: "include" })
       .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
-      .then((d) => { setData(d); setLoading(false); })
-      .catch(() => { setError(true); setLoading(false); });
+      .then((d) => { if (fresh()) { setData(d); setLoading(false); } })
+      .catch(() => { if (fresh()) { setError(true); setLoading(false); } });
   }, []);
 
-  if (loading) return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
-  if (error) return <p className="text-center py-20 text-sm text-red-500">Failed to load dashboard data.</p>;
-  if (!data) return null;
+  useEffect(() => {
+    if (pendingCustom) return;
+    load(period);
+  }, [load, period, pendingCustom]);
 
-  const chartData = range === 7 ? data.dailyRevenue.slice(-7) : data.dailyRevenue;
-  const revenueTrend = computeTrend(data.dailyRevenue, "revenue");
-  const ordersTrend = computeTrend(data.dailyRevenue, "orders");
-  const avgOrderValue = data.totalOrders > 0 ? data.totalRevenue / data.totalOrders : 0;
+  const revenueTrend = data ? pctChange(data.totalRevenue, data.prevTotalRevenue) : null;
+  const ordersTrend = data ? pctChange(data.totalOrders, data.prevTotalOrders) : null;
+  const periodCaption = windowLabel(preset, period);
+  const comparisonCaption = "vs previous period";
+
+  const periodControls = (
+    <div className="flex flex-wrap items-center gap-2">
+      <Toggle
+        value={preset}
+        onChange={(v) => {
+          setPreset(v);
+          if (v !== "custom") setCustomRange(undefined);
+          else setPickerOpen(true);
+        }}
+        options={[
+          { label: "Today", value: "today" as Preset },
+          { label: "Weekly", value: "week" as Preset },
+          { label: "Monthly", value: "month" as Preset },
+          { label: "Custom", value: "custom" as Preset },
+        ]}
+      />
+      <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            onClick={() => setPreset("custom")}
+            className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+              preset === "custom"
+                ? "border-primary/40 bg-primary/5 text-primary"
+                : "border-border text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <CalendarDays size={14} />
+            {preset === "custom" && customRange?.from
+              ? windowLabel("custom", period)
+              : "Pick dates"}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-2" align="end">
+          <Calendar
+            mode="range"
+            numberOfMonths={2}
+            defaultMonth={customRange?.from ?? new Date()}
+            selected={customRange}
+            onSelect={(r: DateRange | undefined) => {
+              setPreset("custom");
+              setCustomRange(r);
+              if (r?.from && r?.to && r.to.getTime() !== r.from.getTime()) setPickerOpen(false);
+            }}
+            disabled={{ after: endOfDay(new Date()) }}
+          />
+          <p className="px-2 pb-1 pt-2 text-xs text-muted-foreground">
+            {customRange?.from
+              ? "Pick the end date, or close to use just this day."
+              : "Select a start and end date."}
+          </p>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Overview of your store's performance</p>
+          <p className="text-sm text-muted-foreground">Showing {periodCaption}</p>
         </div>
         {isSuperAdmin && (
           <Button variant="secondary" loading={exporting} onClick={handleExportCustomers} className="flex items-center gap-2">
@@ -207,27 +307,40 @@ export default function DashboardPage() {
         )}
       </div>
 
+      {periodControls}
+
+      {pendingCustom ? (
+        <Card className="p-10 text-center text-sm text-muted-foreground">
+          Pick an end date to see the figures for that range.
+        </Card>
+      ) : loading ? (
+        <div className="flex justify-center py-20"><Spinner size="lg" /></div>
+      ) : error || !data ? (
+        <p className="py-20 text-center text-sm text-red-500">Failed to load dashboard data.</p>
+      ) : (
+      <div className="space-y-6">
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           icon={TrendingUp}
-          label="Total Revenue"
+          label="Revenue"
           value={gbp(data.totalRevenue)}
           iconClass="bg-primary/10 text-primary"
           trend={revenueTrend}
-          caption="Last 7d vs prior 7d"
+          caption={comparisonCaption}
         />
         <StatCard
           icon={ShoppingCart}
-          label="Total Orders"
+          label="Orders"
           value={String(data.totalOrders)}
           iconClass="bg-accent/10 text-accent"
           trend={ordersTrend}
-          caption="Last 7d vs prior 7d"
+          caption={comparisonCaption}
         />
         <StatCard
           icon={Receipt}
           label="Avg Order Value"
-          value={gbp(avgOrderValue)}
+          value={gbp(data.avgOrderValue)}
           iconClass="bg-sky-500/10 text-sky-600"
           caption="Revenue ÷ orders"
         />
@@ -240,6 +353,57 @@ export default function DashboardPage() {
         />
       </div>
 
+      {(() => {
+      // Tolerate an API that predates this field: the frontend (Netlify) and the
+      // API (Render) deploy independently, so one can be live before the other.
+      const dormant = data.dormantCustomers ?? [];
+      return (
+      <Card className="overflow-hidden">
+        <div className="flex items-center gap-2 border-b border-border px-5 py-3">
+          <UserRoundX size={16} className="text-muted-foreground" />
+          <h2 className="text-sm font-semibold text-foreground">Due for follow-up</h2>
+          <span className="text-xs text-muted-foreground">No order in the last 30 days</span>
+          <Badge variant="warning" className="ml-auto">{dormant.length}</Badge>
+        </div>
+        {dormant.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            Every customer has ordered within the last 30 days.
+          </p>
+        ) : (
+          <ul className="max-h-72 divide-y divide-border overflow-y-auto">
+            {dormant.map((c) => {
+              const days = Math.floor((Date.now() - new Date(c.lastOrderAt).getTime()) / 86_400_000);
+              return (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    onClick={() => setHistoryCustomer({ id: c.id, name: c.name })}
+                    title={`View ${c.name}'s order history and invoices`}
+                    className="flex w-full items-center justify-between gap-3 px-5 py-3 text-left transition-colors hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">{c.name}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        Last order {new Date(c.lastOrderAt).toLocaleDateString("en-GB")} · {days} days ago
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <span className="text-xs text-muted-foreground">
+                        {c.orderCount} {c.orderCount === 1 ? "order" : "orders"}
+                      </span>
+                      <span className="text-sm font-medium text-foreground">{gbp(c.totalSpent)}</span>
+                      <ChevronRight size={15} className="text-muted-foreground" />
+                    </div>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Card>
+      );
+      })()}
+
       <Card className="p-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-base font-semibold text-foreground">{metric === "revenue" ? "Revenue" : "Orders"} trend</h2>
@@ -249,14 +413,9 @@ export default function DashboardPage() {
               onChange={setMetric}
               options={[{ label: "Revenue", value: "revenue" }, { label: "Orders", value: "orders" }]}
             />
-            <Toggle
-              value={range}
-              onChange={setRange}
-              options={[{ label: "7d", value: 7 }, { label: "30d", value: 30 }]}
-            />
           </div>
         </div>
-        <MetricChart data={chartData} metric={metric} />
+        <MetricChart data={data.dailyRevenue} metric={metric} />
       </Card>
 
       {data.lowStockProducts.length > 0 && (
@@ -290,6 +449,10 @@ export default function DashboardPage() {
           </div>
         </Card>
       )}
+      </div>
+      )}
+
+      <CustomerOrderHistoryModal customer={historyCustomer} onClose={() => setHistoryCustomer(null)} />
     </div>
   );
 }

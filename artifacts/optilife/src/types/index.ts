@@ -69,9 +69,22 @@ export type User = {
 };
 
 export type DashboardData = {
+  from: string;
+  to: string;
   totalRevenue: number;
   totalOrders: number;
+  avgOrderValue: number;
+  prevTotalRevenue: number;
+  prevTotalOrders: number;
   lowStockProducts: Product[];
+  dormantCustomers: {
+    id: string;
+    name: string;
+    phone: string | null;
+    lastOrderAt: string;
+    orderCount: number;
+    totalSpent: number;
+  }[];
   dailyRevenue: { date: string; revenue: number; orders: number }[];
 };
 

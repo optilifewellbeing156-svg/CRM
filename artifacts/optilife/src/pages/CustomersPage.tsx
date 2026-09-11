@@ -5,16 +5,9 @@ import { Spinner } from "@/components/ui/Spinner";
 import { SlideOver } from "@/components/ui/SlideOver";
 import { Modal } from "@/components/ui/Modal";
 import { CustomerForm } from "@/components/features/customers/CustomerForm";
+import { CustomerOrderHistoryModal } from "@/components/features/customers/CustomerOrderHistoryModal";
 import { useMe } from "@/hooks/useMe";
-import type { Customer, Order } from "@/types";
-
-const STATUS_BADGE: Record<string, string> = {
-  DELIVERED: "bg-green-100 text-green-700",
-  PROCESSING: "bg-yellow-100 text-yellow-700",
-  PROCESSED: "bg-gray-100 text-gray-700",
-  CANCELLED: "bg-red-100 text-red-700",
-  REFUNDED: "bg-red-100 text-red-700",
-};
+import type { Customer } from "@/types";
 
 export default function CustomersPage() {
   const me = useMe();
@@ -26,8 +19,6 @@ export default function CustomersPage() {
   const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [historyCustomer, setHistoryCustomer] = useState<Customer | null>(null);
-  const [history, setHistory] = useState<Order[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
 
   const isPrivileged = me?.role === "ADMIN" || me?.role === "SUPER_ADMIN";
   const hasManage = isPrivileged || me?.permissions?.includes("manage-customers");
@@ -72,14 +63,6 @@ export default function CustomersPage() {
       (c.phone ?? "").includes(search) ||
       (c.email ?? "").toLowerCase().includes(search.toLowerCase())
   );
-
-  async function openHistory(c: Customer) {
-    setHistoryCustomer(c);
-    setHistoryLoading(true);
-    const res = await fetch(`/api/customers/${c.id}/orders`, { credentials: "include" });
-    setHistory(await res.json());
-    setHistoryLoading(false);
-  }
 
   async function handleDelete() {
     if (!deleteTarget) return;
@@ -167,7 +150,7 @@ export default function CustomersPage() {
                   </>}
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2 justify-end">
-                      <button onClick={() => openHistory(c)} className="text-gray-400 hover:text-primary" title="Order history">
+                      <button onClick={() => setHistoryCustomer(c)} className="text-gray-400 hover:text-primary" title="Order history">
                         <History size={15} />
                       </button>
                       {canSetStatus && (
@@ -213,27 +196,8 @@ export default function CustomersPage() {
         </div>
       </Modal>
 
-      <Modal open={!!historyCustomer} title={`Orders — ${historyCustomer?.name}`} onClose={() => setHistoryCustomer(null)}>
-        {historyLoading ? (
-          <div className="flex justify-center py-6"><Spinner /></div>
-        ) : history.length === 0 ? (
-          <p className="text-sm text-gray-400 py-4 text-center">No orders found.</p>
-        ) : (
-          <div className="space-y-2 max-h-80 overflow-y-auto">
-            {history.map((o) => (
-              <div key={o.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="text-xs font-mono text-gray-500">#{o.id.slice(0, 8).toUpperCase()}</p>
-                  <p className="text-sm font-medium">£{Number(o.totalAmount).toFixed(2)}</p>
-                </div>
-                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_BADGE[o.status ?? ""] ?? "bg-gray-100 text-gray-700"}`}>
-                  {o.status}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </Modal>
+      <CustomerOrderHistoryModal customer={historyCustomer} onClose={() => setHistoryCustomer(null)} />
+
     </div>
   );
 }
