@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "wouter";
-import { Plus, Eye, Trash2, Pencil, Download, Search } from "lucide-react";
+import { Plus, Eye, Trash2, Pencil, Download, Search, ChevronDown, Check } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { Modal } from "@/components/ui/Modal";
@@ -32,9 +32,52 @@ export default function OrdersPage() {
   const [deleteError, setDeleteError] = useState("");
 
   const isPrivileged = me?.role === "ADMIN" || me?.role === "SUPER_ADMIN";
+  const isSuperAdmin = me?.role === "SUPER_ADMIN";
   const canCreate = isPrivileged || me?.permissions?.includes("create-orders");
   const canEdit = isPrivileged || me?.permissions?.includes("edit-orders");
   const canDelete = isPrivileged || me?.permissions?.includes("delete-orders");
+  // Mirrors the API: a status-or-paid-only update is allowed with either
+  // edit-orders or the narrower change-order-status permission.
+  const canChangeStatus = canEdit || me?.permissions?.includes("change-order-status");
+
+  // In-list editing: which order's status menu is open (anchored at a fixed
+  // position so the table's horizontal-scroll container can't clip it), and
+  // which row has an update in flight.
+  const [statusMenu, setStatusMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [rowBusy, setRowBusy] = useState<string | null>(null);
+  const [actionError, setActionError] = useState("");
+
+  useEffect(() => {
+    if (!statusMenu) return;
+    const close = () => setStatusMenu(null);
+    window.addEventListener("mousedown", close);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("mousedown", close);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [statusMenu]);
+
+  async function patchOrder(id: string, body: Record<string, unknown>) {
+    setRowBusy(id);
+    setActionError("");
+    const res = await fetch(`/api/orders/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    setRowBusy(null);
+    if (!res.ok) {
+      // e.g. 403, or "insufficient stock" when reactivating a cancelled order
+      setActionError(data.error ?? "Failed to update order");
+      return;
+    }
+    setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status: data.status, isPaid: data.isPaid } : o)));
+  }
 
   // Filters. The date range drives both the on-screen list and the Excel
   // export, so what you see is what you export.
@@ -235,7 +278,7 @@ export default function OrdersPage() {
           )}
         </div>
 
-        {isPrivileged && (
+        {(isPrivileged || isSuperAdmin) && (
           <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-border pt-3">
             <div className="flex items-center gap-1.5">
               <label className="text-xs font-medium text-muted-foreground">Pick a month</label>
@@ -255,17 +298,27 @@ export default function OrdersPage() {
                 Last month
               </button>
             </div>
-            <div className="mx-1 hidden h-8 w-px bg-border sm:block" />
-            <Button variant="secondary" loading={exporting} onClick={handleExport} className="flex items-center gap-2">
-              <Download size={16} /> Export Excel
-            </Button>
-            <p className="basis-full text-xs text-muted-foreground sm:basis-auto">
-              The export uses the date range above — leave it blank to export every order.
-            </p>
-            {exportError && <p className="basis-full text-xs text-red-600">{exportError}</p>}
+            {/* Owner only, matching the API: the export contains the whole
+                order book. Admins keep the month quick-picks as list filters. */}
+            {isSuperAdmin && (
+              <>
+                <div className="mx-1 hidden h-8 w-px bg-border sm:block" />
+                <Button variant="secondary" loading={exporting} onClick={handleExport} className="flex items-center gap-2">
+                  <Download size={16} /> Export Excel
+                </Button>
+                <p className="basis-full text-xs text-muted-foreground sm:basis-auto">
+                  The export uses the date range above — leave it blank to export every order.
+                </p>
+                {exportError && <p className="basis-full text-xs text-red-600">{exportError}</p>}
+              </>
+            )}
           </div>
         )}
       </div>
+
+      {actionError && (
+        <p className="mb-4 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{actionError}</p>
+      )}
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {loading ? (
@@ -297,17 +350,50 @@ export default function OrdersPage() {
                   <td className="px-4 py-3" data-label="Total">£{Number(o.totalAmount).toFixed(2)}</td>
                   <td className="px-4 py-3" data-label="Status">
                     {o.status ? (
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_BADGE[o.status] ?? "bg-gray-100 text-gray-700"}`}>
-                        {o.status}
-                      </span>
+                      canChangeStatus ? (
+                        <button
+                          type="button"
+                          title="Change status"
+                          disabled={rowBusy === o.id}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            const r = e.currentTarget.getBoundingClientRect();
+                            setStatusMenu(
+                              statusMenu?.id === o.id
+                                ? null
+                                : { id: o.id, x: Math.min(r.left, window.innerWidth - 190), y: r.bottom + 4 }
+                            );
+                          }}
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium cursor-pointer hover:brightness-95 disabled:opacity-50 ${STATUS_BADGE[o.status] ?? "bg-gray-100 text-gray-700"}`}
+                        >
+                          {o.status}
+                          <ChevronDown size={11} aria-hidden />
+                        </button>
+                      ) : (
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_BADGE[o.status] ?? "bg-gray-100 text-gray-700"}`}>
+                          {o.status}
+                        </span>
+                      )
                     ) : (
                       <span className="text-gray-400 text-xs">—</span>
                     )}
                   </td>
                   <td className="px-4 py-3" data-label="Payment">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${o.isPaid ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
-                      {o.isPaid ? "PAID" : "UNPAID"}
-                    </span>
+                    {canChangeStatus ? (
+                      <button
+                        type="button"
+                        title={o.isPaid ? "Mark as unpaid" : "Mark as paid"}
+                        disabled={rowBusy === o.id}
+                        onClick={() => patchOrder(o.id, { isPaid: !o.isPaid })}
+                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium cursor-pointer hover:brightness-95 disabled:opacity-50 ${o.isPaid ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}
+                      >
+                        {o.isPaid ? "PAID" : "UNPAID"}
+                      </button>
+                    ) : (
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${o.isPaid ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+                        {o.isPaid ? "PAID" : "UNPAID"}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-gray-500" data-label="Date">
                     {new Date(o.createdAt).toLocaleDateString("en-GB")}
@@ -336,6 +422,34 @@ export default function OrdersPage() {
           </div>
         )}
       </div>
+
+      {statusMenu && (
+        <div
+          style={{ position: "fixed", left: statusMenu.x, top: statusMenu.y, zIndex: 50 }}
+          onMouseDown={(e) => e.stopPropagation()}
+          className="w-44 rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+        >
+          {STATUS_OPTIONS.map((s) => {
+            const isCurrent = orders.find((o) => o.id === statusMenu.id)?.status === s;
+            return (
+              <button
+                key={s}
+                type="button"
+                disabled={isCurrent}
+                onClick={() => {
+                  const id = statusMenu.id;
+                  setStatusMenu(null);
+                  if (!isCurrent) patchOrder(id, { status: s });
+                }}
+                className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left hover:bg-gray-50 disabled:cursor-default"
+              >
+                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_BADGE[s]}`}>{s}</span>
+                {isCurrent && <Check size={13} className="text-gray-400" aria-hidden />}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <Modal open={!!deleteTarget} title="Delete Order" onClose={() => { setDeleteTarget(null); setDeleteError(""); }}>
         <p className="text-sm text-gray-600 mb-4">

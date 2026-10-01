@@ -50,6 +50,7 @@ export default function SalesReportPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [userId, setUserId] = useState("");
+  const [exportingPdf, setExportingPdf] = useState("");
   const [users, setUsers] = useState<{ id: string; username: string }[]>([]);
 
   const me = useMe();
@@ -72,6 +73,31 @@ export default function SalesReportPage() {
     if (!res.ok) { setError("Failed to fetch report"); setLoading(false); return; }
     setData(await res.json());
     setLoading(false);
+  }
+
+  async function handleExportPdf() {
+    setExportingPdf("busy");
+    setError("");
+    try {
+      const params = new URLSearchParams({ from, to });
+      if (isPrivileged && userId) params.set("userId", userId);
+      const res = await fetch(`/api/sales-report/pdf?${params.toString()}`, { credentials: "include" });
+      if (!res.ok) {
+        setError("Failed to generate the PDF report");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `sales-report-${from}_to_${to}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setError("Failed to generate the PDF report");
+    } finally {
+      setExportingPdf("");
+    }
   }
 
   function handleExport() {
@@ -122,9 +148,14 @@ export default function SalesReportPage() {
         )}
         <Button onClick={fetchReport} loading={loading}>Generate Report</Button>
         {data && (
-          <Button variant="secondary" onClick={handleExport} className="flex items-center gap-2">
-            <Download size={14} /> Export CSV
-          </Button>
+          <>
+            <Button variant="secondary" loading={exportingPdf === "busy"} onClick={handleExportPdf} className="flex items-center gap-2">
+              <Download size={14} /> Export PDF
+            </Button>
+            <Button variant="secondary" onClick={handleExport} className="flex items-center gap-2">
+              <Download size={14} /> Export CSV
+            </Button>
+          </>
         )}
       </div>
 

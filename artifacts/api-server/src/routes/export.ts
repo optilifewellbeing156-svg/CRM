@@ -2,7 +2,7 @@ import { Router, type Response } from "express";
 import ExcelJS from "exceljs";
 import { db, ordersTable, orderItemsTable, productsTable, customersTable, usersTable } from "@workspace/db";
 import { eq, and, gte, lte, asc, type SQL } from "drizzle-orm";
-import { requireSuperAdmin, requireAdmin, type AuthRequest } from "../lib/middleware";
+import { requireSuperAdmin, type AuthRequest } from "../lib/middleware";
 
 const router = Router();
 
@@ -137,7 +137,9 @@ router.get("/export/customers", requireSuperAdmin, async (req: AuthRequest, res:
  * each order. Available to privileged users (ADMIN / SUPER_ADMIN).
  * Query params: from=YYYY-MM-DD, to=YYYY-MM-DD (both inclusive, optional).
  */
-router.get("/export/orders", requireAdmin, async (req: AuthRequest, res: Response) => {
+// Owner only, like the customers export: the spreadsheet contains the whole
+// order book, which regular admins should not be able to walk out with.
+router.get("/export/orders", requireSuperAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const fromStr = typeof req.query.from === "string" ? req.query.from : "";
     const toStr = typeof req.query.to === "string" ? req.query.to : "";

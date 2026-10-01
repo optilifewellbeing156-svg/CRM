@@ -1,17 +1,21 @@
 import { Router, Response } from "express";
+import React from "react";
+import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 import { db } from "@workspace/db";
 import { ordersTable, orderItemsTable, productsTable, customersTable, usersTable } from "@workspace/db";
 import { eq, gte, lte, and, inArray } from "drizzle-orm";
 import { requirePermission, isPrivileged, type AuthRequest } from "../lib/middleware";
+import { SalesReportPDF } from "../lib/sales-report-pdf";
+import { getCompanyDetails } from "../lib/settings";
 
 const router = Router();
 
-router.get("/sales-report", requirePermission("sales-report"), async (req: AuthRequest, res: Response) => {
-  try {
+/** Builds the full report payload; shared by the JSON endpoint and the PDF. */
+async function computeSalesReport(req: AuthRequest) {
+  {
     const { from, to, userId } = req.query;
     if (!from || !to) {
-      res.status(400).json({ error: "from and to are required" });
-      return;
+      return { ok: false as const, status: 400, error: "from and to are required" };
     }
 
     const fromDate = new Date(String(from));
@@ -138,7 +142,13 @@ router.get("/sales-report", requirePermission("sales-report"), async (req: AuthR
       userMap.set(order.createdById, existing);
     }
 
-    res.json({
+    let scopedUsername: string | null = null;
+    if (scopedUserId) {
+      const u = await db.select({ username: usersTable.username }).from(usersTable).where(eq(usersTable.id, scopedUserId)).limit(1);
+      scopedUsername = u[0]?.username ?? null;
+    }
+
+    const payload = {
       totalRevenue,
       totalOrders,
       avgOrderValue,
@@ -155,7 +165,50 @@ router.get("/sales-report", requirePermission("sales-report"), async (req: AuthR
       })),
       topProducts,
       userReport: Array.from(userMap.values()).sort((a, b) => b.totalSales - a.totalSales),
+    };
+    return { ok: true as const, payload, from: String(from), to: String(to), scopedUsername };
+  }
+}
+
+router.get("/sales-report", requirePermission("sales-report"), async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await computeSalesReport(req);
+    if (!result.ok) {
+      res.status(result.status).json({ error: result.error });
+      return;
+    }
+    res.json(result.payload);
+  } catch (e) {
+    req.log.error(e);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// The same report as a company-branded PDF document (header, summary, top
+// products, user performance and the order list), for sharing and filing.
+router.get("/sales-report/pdf", requirePermission("sales-report"), async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await computeSalesReport(req);
+    if (!result.ok) {
+      res.status(result.status).json({ error: result.error });
+      return;
+    }
+    const company = await getCompanyDetails();
+    const buffer = await renderToBuffer(
+      React.createElement(SalesReportPDF, {
+        data: result.payload,
+        company,
+        from: result.from,
+        to: result.to,
+        scopedUsername: result.scopedUsername,
+      }) as React.ReactElement<DocumentProps>
+    );
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="sales-report-${result.from}_to_${result.to}.pdf"`,
+      "Content-Length": buffer.length,
     });
+    res.send(buffer);
   } catch (e) {
     req.log.error(e);
     res.status(500).json({ error: "Internal server error" });
