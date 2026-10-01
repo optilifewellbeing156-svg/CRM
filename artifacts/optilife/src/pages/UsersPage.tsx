@@ -40,6 +40,8 @@ export default function UsersPage() {
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const [actionError, setActionError] = useState("");
 
   const fetchUsers = () => {
     setLoading(true);
@@ -64,8 +66,10 @@ export default function UsersPage() {
     setSaving(true); setFormError("");
     const url = editUser ? `/api/users/${editUser.id}` : "/api/users";
     const method = editUser ? "PUT" : "POST";
+    // Role and permissions are super-admin-only on the API; sending them from
+    // an ADMIN made every save fail, including plain password resets.
     const body = editUser
-      ? { username: form.username, role: form.role, commissionRate: Number(form.commissionRate), permissions: form.permissions, isActive: form.isActive, ...(form.password ? { password: form.password } : {}) }
+      ? { username: form.username, commissionRate: Number(form.commissionRate), isActive: form.isActive, ...(isSuperAdmin ? { role: form.role, permissions: form.permissions } : {}), ...(form.password ? { password: form.password } : {}) }
       : { username: form.username, password: form.password, role: form.role, commissionRate: Number(form.commissionRate), permissions: form.permissions };
     const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(body) });
     const data = await res.json();
@@ -75,20 +79,32 @@ export default function UsersPage() {
   }
 
   async function toggleActive(u: User) {
-    await fetch(`/api/users/${u.id}`, {
+    setActionError("");
+    const res = await fetch(`/api/users/${u.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify({ isActive: !u.isActive }),
     });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setActionError(data.error ?? "Failed to update user");
+    }
     fetchUsers();
   }
 
   async function handleDelete() {
     if (!deleteTarget) return;
     setDeleting(true);
-    await fetch(`/api/users/${deleteTarget.id}`, { method: "DELETE", credentials: "include" });
-    setDeleting(false); setDeleteTarget(null); fetchUsers();
+    setDeleteError("");
+    const res = await fetch(`/api/users/${deleteTarget.id}`, { method: "DELETE", credentials: "include" });
+    setDeleting(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setDeleteError(data.error ?? "Failed to delete user");
+      return;
+    }
+    setDeleteTarget(null); fetchUsers();
   }
 
   function togglePermission(key: string) {
@@ -118,6 +134,8 @@ export default function UsersPage() {
           </Button>
         )}
       </div>
+
+      {actionError && <p className="mb-4 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{actionError}</p>}
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {loading ? (
@@ -161,7 +179,9 @@ export default function UsersPage() {
                           {u.isActive ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
                         </button>
                       )}
-                      <button onClick={() => openEdit(u)} className="text-gray-400 hover:text-primary"><Pencil size={15} /></button>
+                      {(isSuperAdmin || u.role === "USER" || u.id === me?.userId) && (
+                        <button onClick={() => openEdit(u)} className="text-gray-400 hover:text-primary"><Pencil size={15} /></button>
+                      )}
                       {isSuperAdmin && u.role !== "SUPER_ADMIN" && (
                         <button onClick={() => setDeleteTarget(u)} className="text-gray-400 hover:text-red-500"><Trash2 size={15} /></button>
                       )}
@@ -229,8 +249,9 @@ export default function UsersPage() {
         </div>
       </SlideOver>
 
-      <Modal open={!!deleteTarget} title="Delete User" onClose={() => setDeleteTarget(null)}>
+      <Modal open={!!deleteTarget} title="Delete User" onClose={() => { setDeleteTarget(null); setDeleteError(""); }}>
         <p className="text-sm text-gray-600 mb-4">Delete user <strong>{deleteTarget?.username}</strong>?</p>
+        {deleteError && <p className="text-sm text-red-500 mb-3">{deleteError}</p>}
         <div className="flex gap-3 justify-end">
           <Button variant="secondary" onClick={() => setDeleteTarget(null)}>Cancel</Button>
           <Button variant="danger" loading={deleting} onClick={handleDelete}>Delete</Button>

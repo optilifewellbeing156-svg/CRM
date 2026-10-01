@@ -13,7 +13,9 @@ let lineIdSeq = 1;
 function emptyLine(): LineItem { return { id: lineIdSeq++, productId: "", quantity: "", unitCost: "" }; }
 
 export default function PurchasesPage() {
-  const me = useMe();
+  const meState = useMe();
+  // Narrow away the "loading" sentinel so property access typechecks.
+  const me = meState === "loading" ? null : meState;
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,15 +49,34 @@ export default function PurchasesPage() {
   const canEdit = isAdmin || me?.permissions?.includes("edit-purchases");
   const canDelete = isAdmin || me?.permissions?.includes("delete-purchases");
 
+  const [loadError, setLoadError] = useState("");
+
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    const [pRes, prRes] = await Promise.all([
-      fetch("/api/purchases", { credentials: "include" }),
-      fetch("/api/products", { credentials: "include" }),
-    ]);
-    setPurchases(await pRes.json());
-    setProducts(await prRes.json());
-    setLoading(false);
+    setLoadError("");
+    try {
+      const [pRes, prRes] = await Promise.all([
+        fetch("/api/purchases", { credentials: "include" }),
+        fetch("/api/products?limit=1000", { credentials: "include" }),
+      ]);
+      if (!pRes.ok) {
+        setLoadError("Failed to load purchases.");
+        setPurchases([]);
+      } else {
+        const data = await pRes.json();
+        setPurchases(Array.isArray(data) ? data : []);
+      }
+      // A user can have the purchases permission without the products one; the
+      // page still works, the product dropdowns are just empty.
+      const productsData = prRes.ok ? await prRes.json() : [];
+      setProducts(Array.isArray(productsData) ? productsData : []);
+    } catch {
+      setLoadError("Failed to load purchases.");
+      setPurchases([]);
+      setProducts([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
@@ -139,11 +160,19 @@ export default function PurchasesPage() {
     fetchAll();
   }
 
+  const [deleteError, setDeleteError] = useState("");
+
   async function handleDelete() {
     if (!deleteTarget) return;
     setDeleting(true);
-    await fetch(`/api/purchases/${deleteTarget.id}`, { method: "DELETE", credentials: "include" });
+    setDeleteError("");
+    const res = await fetch(`/api/purchases/${deleteTarget.id}`, { method: "DELETE", credentials: "include" });
     setDeleting(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setDeleteError(data.error ?? "Failed to delete purchase");
+      return;
+    }
     setDeleteTarget(null);
     fetchAll();
   }
@@ -158,6 +187,8 @@ export default function PurchasesPage() {
           </Button>
         )}
       </div>
+
+      {loadError && <p className="mb-4 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{loadError}</p>}
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {loading ? (
@@ -227,7 +258,7 @@ export default function PurchasesPage() {
                   </select>
                 </div>
                 <div className="col-span-5 sm:col-span-3">
-                  <input type="number" placeholder="Qty" value={l.quantity} onChange={(e) => updateLine(l.id, "quantity", e.target.value)}
+                  <input type="number" min="1" step="1" placeholder="Qty" value={l.quantity} onChange={(e) => updateLine(l.id, "quantity", e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
                 </div>
                 <div className="col-span-5 sm:col-span-3">
@@ -281,7 +312,7 @@ export default function PurchasesPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-sm font-medium text-gray-700 mb-1 block">Quantity</label>
-              <input type="number" value={editQty} onChange={(e) => setEditQty(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+              <input type="number" min="1" step="1" value={editQty} onChange={(e) => setEditQty(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
             </div>
             <div>
               <label className="text-sm font-medium text-gray-700 mb-1 block">Unit Cost £</label>
@@ -312,8 +343,9 @@ export default function PurchasesPage() {
         </div>
       </SlideOver>
 
-      <Modal open={!!deleteTarget} title="Delete Purchase" onClose={() => setDeleteTarget(null)}>
+      <Modal open={!!deleteTarget} title="Delete Purchase" onClose={() => { setDeleteTarget(null); setDeleteError(""); }}>
         <p className="text-sm text-gray-600 mb-4">Delete this purchase? Stock will be adjusted.</p>
+        {deleteError && <p className="text-sm text-red-500 mb-3">{deleteError}</p>}
         <div className="flex gap-3 justify-end">
           <Button variant="secondary" onClick={() => setDeleteTarget(null)}>Cancel</Button>
           <Button variant="danger" loading={deleting} onClick={handleDelete}>Delete</Button>

@@ -26,11 +26,30 @@ export function CustomerForm({ initial, onSuccess }: CustomerFormProps) {
     try {
       const url = initial ? `/api/customers/${initial.id}` : "/api/customers";
       const method = initial ? "PUT" : "POST";
+      // On edit, send only the fields that changed. Users without card access
+      // see masked values ("**** **** **** 1234"); echoing those back on save
+      // used to overwrite the stored card with asterisks.
+      const changed = (value: string, original: string | null | undefined) => value !== (original ?? "");
+      const body = initial
+        ? {
+            ...(changed(name, initial.name) && { name }),
+            ...(changed(phone, initial.phone) && { phone }),
+            ...(changed(email, initial.email) && { email }),
+            ...(changed(address, initial.address) && { address }),
+            ...(changed(cardNumber, initial.cardNumber) && { cardNumber }),
+            ...(changed(cardExpiry, initial.cardExpiry) && { cardExpiry }),
+            ...(changed(cardHolder, initial.cardHolder) && { cardHolder }),
+          }
+        : { name, phone, email, address, cardNumber, cardExpiry, cardHolder };
+      if (initial && Object.keys(body).length === 0) {
+        onSuccess();
+        return;
+      }
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ name, phone, email, address, cardNumber, cardExpiry, cardHolder }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) setError(data.error ?? "Failed to save");

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { TrendingUp, TrendingDown, ShoppingCart, AlertTriangle, Download, Receipt, CalendarDays, UserRoundX, ChevronRight } from "lucide-react";
 import type { DateRange } from "react-day-picker";
 import {
@@ -12,7 +12,24 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CustomerOrderHistoryModal } from "@/components/features/customers/CustomerOrderHistoryModal";
 import { useMe } from "@/hooks/useMe";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import {
+  AreaChart,
+  Area as RArea,
+  XAxis as RXAxis,
+  YAxis as RYAxis,
+  CartesianGrid,
+  Tooltip as RTooltip,
+  ResponsiveContainer,
+} from "recharts";
+
+// recharts 2.x ships React-18-era class-component types that React 19's JSX
+// checker refuses ("cannot be used as a JSX component"). The components work
+// at runtime; give them a props-preserving JSX-compatible type until the
+// recharts 3 upgrade.
+const Area = RArea as unknown as (props: React.ComponentProps<typeof RArea>) => React.ReactNode;
+const XAxis = RXAxis as unknown as (props: React.ComponentProps<typeof RXAxis>) => React.ReactNode;
+const YAxis = RYAxis as unknown as (props: React.ComponentProps<typeof RYAxis>) => React.ReactNode;
+const Tooltip = RTooltip as unknown as (props: React.ComponentProps<typeof RTooltip>) => React.ReactNode;
 import type { DashboardData } from "@/types";
 
 type Preset = "today" | "week" | "month" | "custom";
@@ -127,7 +144,7 @@ function MetricChart({
           tickLine={false}
           axisLine={false}
           width={isRev ? 48 : 32}
-          tickFormatter={(v) => (isRev ? `£${v}` : String(v))}
+          tickFormatter={(v: number) => (isRev ? `£${v}` : String(v))}
         />
         <Tooltip
           cursor={{ stroke: "hsl(170,42%,40%)", strokeWidth: 1, strokeDasharray: "4 4" }}
@@ -175,7 +192,9 @@ function Toggle<T extends string | number>({
 }
 
 export default function DashboardPage() {
-  const me = useMe();
+  const meState = useMe();
+  // Narrow away the "loading" sentinel so property access typechecks.
+  const me = meState === "loading" ? null : meState;
   const [data, setData] = useState<DashboardData | null>(null);
   const [preset, setPreset] = useState<Preset>("week");
   const [customRange, setCustomRange] = useState<DateRange | undefined>();
@@ -186,7 +205,7 @@ export default function DashboardPage() {
   const [error, setError] = useState(false);
   const [exporting, setExporting] = useState(false);
 
-  const isSuperAdmin = me !== "loading" && me?.role === "SUPER_ADMIN";
+  const isSuperAdmin = me?.role === "SUPER_ADMIN";
 
   async function handleExportCustomers() {
     setExporting(true);
@@ -408,9 +427,9 @@ export default function DashboardPage() {
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-base font-semibold text-foreground">{metric === "revenue" ? "Revenue" : "Orders"} trend</h2>
           <div className="flex items-center gap-2">
-            <Toggle
+            <Toggle<"revenue" | "orders">
               value={metric}
-              onChange={setMetric}
+              onChange={(v) => setMetric(v)}
               options={[{ label: "Revenue", value: "revenue" }, { label: "Orders", value: "orders" }]}
             />
           </div>

@@ -17,12 +17,12 @@ function downloadCSV(filename: string, rows: string[][]) {
   URL.revokeObjectURL(url);
 }
 
-const STATUS_VARIANT: Record<string, "success" | "warning" | "danger" | "default"> = {
+const STATUS_VARIANT: Record<string, "success" | "warning" | "destructive" | "default"> = {
   DELIVERED: "success",
   PROCESSING: "warning",
   PROCESSED: "default",
-  CANCELLED: "danger",
-  REFUNDED: "danger",
+  CANCELLED: "destructive",
+  REFUNDED: "destructive",
 };
 
 type ReportData = {
@@ -37,11 +37,13 @@ type ReportData = {
 };
 
 export default function SalesReportPage() {
-  const today = new Date().toISOString().slice(0, 10);
+  // Local-time dates; the UTC versions show yesterday/last month around
+  // midnight during British Summer Time.
+  const today = new Date().toLocaleDateString("en-CA");
   const [from, setFrom] = useState(() => {
     const d = new Date();
     d.setDate(1);
-    return d.toISOString().slice(0, 10);
+    return d.toLocaleDateString("en-CA");
   });
   const [to, setTo] = useState(today);
   const [data, setData] = useState<ReportData | null>(null);

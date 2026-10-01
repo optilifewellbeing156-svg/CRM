@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "wouter";
-import { Plus, Eye, Trash2, Pencil, Download } from "lucide-react";
+import { Plus, Eye, Trash2, Pencil, Download, Search } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { Modal } from "@/components/ui/Modal";
@@ -15,76 +15,145 @@ const STATUS_BADGE: Record<string, string> = {
   REFUNDED: "bg-red-100 text-red-700",
 };
 
+const STATUS_OPTIONS = ["PROCESSING", "PROCESSED", "DELIVERED", "CANCELLED", "REFUNDED"];
+
+const FILTER_INPUT =
+  "px-3 py-2 text-sm border border-input rounded-lg bg-background outline-none focus:ring-2 focus:ring-primary/30";
+
 export default function OrdersPage() {
-  const me = useMe();
+  const meState = useMe();
+  // Narrow away the "loading" sentinel so property access typechecks.
+  const me = meState === "loading" ? null : meState;
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<Order | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
-  const isSuperAdmin = me?.role === "SUPER_ADMIN";
-  const isPrivileged = isSuperAdmin || me?.role === "ADMIN";
+  const isPrivileged = me?.role === "ADMIN" || me?.role === "SUPER_ADMIN";
   const canCreate = isPrivileged || me?.permissions?.includes("create-orders");
   const canEdit = isPrivileged || me?.permissions?.includes("edit-orders");
   const canDelete = isPrivileged || me?.permissions?.includes("delete-orders");
 
-  const [exportFrom, setExportFrom] = useState("");
-  const [exportTo, setExportTo] = useState("");
+  // Filters. The date range drives both the on-screen list and the Excel
+  // export, so what you see is what you export.
+  const [search, setSearch] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [paidFilter, setPaidFilter] = useState("");
   const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
+
+  const hasFilters = !!(search || from || to || statusFilter || paidFilter);
 
   const toISO = (d: Date) => d.toLocaleDateString("en-CA"); // YYYY-MM-DD, local
-  const currentMonth = exportFrom ? exportFrom.slice(0, 7) : "";
+  const currentMonth = from ? from.slice(0, 7) : "";
 
   // Fill the range to cover a whole calendar month, e.g. "2026-07".
   function selectMonth(month: string) {
     if (!month) return;
     const [y, m] = month.split("-").map(Number);
-    setExportFrom(toISO(new Date(y, m - 1, 1)));
-    setExportTo(toISO(new Date(y, m, 0))); // day 0 of next month = last day of this
+    setFrom(toISO(new Date(y, m - 1, 1)));
+    setTo(toISO(new Date(y, m, 0))); // day 0 of next month = last day of this
   }
 
   function selectRelativeMonth(offset: number) {
     const now = new Date();
     const first = new Date(now.getFullYear(), now.getMonth() + offset, 1);
-    setExportFrom(toISO(first));
-    setExportTo(toISO(new Date(first.getFullYear(), first.getMonth() + 1, 0)));
+    setFrom(toISO(first));
+    setTo(toISO(new Date(first.getFullYear(), first.getMonth() + 1, 0)));
   }
+
+  function clearFilters() {
+    setSearch("");
+    setFrom("");
+    setTo("");
+    setStatusFilter("");
+    setPaidFilter("");
+  }
+
+  // Debounce only the text search; date and dropdown changes apply at once.
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Guards against out-of-order responses when filters change quickly.
+  const fetchSeq = useRef(0);
+
+  const fetchOrders = useCallback(async () => {
+    const seq = ++fetchSeq.current;
+    setLoading(true);
+    setLoadError("");
+    const params = new URLSearchParams({ limit: "1000" });
+    if (debouncedSearch) params.set("search", debouncedSearch);
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    if (statusFilter) params.set("status", statusFilter);
+    if (paidFilter) params.set("paid", paidFilter);
+    try {
+      const res = await fetch(`/api/orders?${params}`, { credentials: "include" });
+      if (seq !== fetchSeq.current) return;
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setLoadError(data.error ?? "Failed to load orders.");
+        setOrders([]);
+      } else {
+        const data = await res.json();
+        setOrders(Array.isArray(data) ? data : []);
+      }
+    } catch {
+      if (seq !== fetchSeq.current) return;
+      setLoadError("Could not reach the server.");
+      setOrders([]);
+    } finally {
+      if (seq === fetchSeq.current) setLoading(false);
+    }
+  }, [debouncedSearch, from, to, statusFilter, paidFilter]);
+
+  useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
   async function handleExport() {
     setExporting(true);
+    setExportError("");
     try {
       const params = new URLSearchParams();
-      if (exportFrom) params.set("from", exportFrom);
-      if (exportTo) params.set("to", exportTo);
+      if (from) params.set("from", from);
+      if (to) params.set("to", to);
       const qs = params.toString();
       const res = await fetch(`/api/export/orders${qs ? `?${qs}` : ""}`, { credentials: "include" });
-      if (!res.ok) return;
+      if (!res.ok) {
+        setExportError("Export failed. Please try again.");
+        return;
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `orders-${exportFrom || "start"}_to_${exportTo || "end"}.xlsx`;
+      a.download = `orders-${from || "start"}_to_${to || "end"}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
+    } catch {
+      setExportError("Export failed. Please try again.");
     } finally {
       setExporting(false);
     }
   }
 
-  const fetchOrders = useCallback(async () => {
-    setLoading(true);
-    const res = await fetch("/api/orders", { credentials: "include" });
-    setOrders(await res.json());
-    setLoading(false);
-  }, []);
-
-  useEffect(() => { fetchOrders(); }, [fetchOrders]);
-
   async function handleDelete() {
     if (!deleteTarget) return;
     setDeleting(true);
-    await fetch(`/api/orders/${deleteTarget.id}`, { method: "DELETE", credentials: "include" });
+    setDeleteError("");
+    const res = await fetch(`/api/orders/${deleteTarget.id}`, { method: "DELETE", credentials: "include" });
     setDeleting(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setDeleteError(data.error ?? "Failed to delete order");
+      return;
+    }
     setDeleteTarget(null);
     fetchOrders();
   }
@@ -102,19 +171,75 @@ export default function OrdersPage() {
         )}
       </div>
 
-      {isPrivileged && (
-        <div className="bg-card rounded-xl border border-border p-4 mb-6">
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-muted-foreground">Pick a month</label>
+      <div className="bg-card rounded-xl border border-border p-4 mb-6">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex min-w-[220px] flex-1 flex-col gap-1 sm:max-w-xs">
+            <label className="text-xs font-medium text-muted-foreground">Search</label>
+            <div className="relative">
+              <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
-                type="month"
-                value={currentMonth}
-                onChange={(e) => selectMonth(e.target.value)}
-                className="px-3 py-2 text-sm border border-input rounded-lg bg-background outline-none focus:ring-2 focus:ring-primary/30"
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Invoice # or customer..."
+                className={`${FILTER_INPUT} w-full pl-8`}
               />
             </div>
-            <div className="flex items-center gap-1.5 self-end pb-0.5">
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-muted-foreground">From date</label>
+            <input
+              type="date"
+              value={from}
+              max={to || undefined}
+              onChange={(e) => setFrom(e.target.value)}
+              className={FILTER_INPUT}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-muted-foreground">To date</label>
+            <input
+              type="date"
+              value={to}
+              min={from || undefined}
+              onChange={(e) => setTo(e.target.value)}
+              className={FILTER_INPUT}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-muted-foreground">Status</label>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={FILTER_INPUT}>
+              <option value="">All</option>
+              {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-muted-foreground">Payment</label>
+            <select value={paidFilter} onChange={(e) => setPaidFilter(e.target.value)} className={FILTER_INPUT}>
+              <option value="">All</option>
+              <option value="true">Paid</option>
+              <option value="false">Unpaid</option>
+            </select>
+          </div>
+
+          {hasFilters && (
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="self-end pb-2.5 text-sm text-muted-foreground hover:text-foreground"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+
+        {isPrivileged && (
+          <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-border pt-3">
+            <div className="flex items-center gap-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Pick a month</label>
+              <input type="month" value={currentMonth} onChange={(e) => selectMonth(e.target.value)} className={FILTER_INPUT} />
               <button
                 type="button"
                 onClick={() => selectRelativeMonth(0)}
@@ -130,53 +255,30 @@ export default function OrdersPage() {
                 Last month
               </button>
             </div>
-
-            <div className="mx-1 hidden h-9 w-px self-end bg-border sm:block" />
-
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-muted-foreground">From date</label>
-              <input
-                type="date"
-                value={exportFrom}
-                max={exportTo || undefined}
-                onChange={(e) => setExportFrom(e.target.value)}
-                className="px-3 py-2 text-sm border border-input rounded-lg bg-background outline-none focus:ring-2 focus:ring-primary/30"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-muted-foreground">To date</label>
-              <input
-                type="date"
-                value={exportTo}
-                min={exportFrom || undefined}
-                onChange={(e) => setExportTo(e.target.value)}
-                className="px-3 py-2 text-sm border border-input rounded-lg bg-background outline-none focus:ring-2 focus:ring-primary/30"
-              />
-            </div>
+            <div className="mx-1 hidden h-8 w-px bg-border sm:block" />
             <Button variant="secondary" loading={exporting} onClick={handleExport} className="flex items-center gap-2">
               <Download size={16} /> Export Excel
             </Button>
-            {(exportFrom || exportTo) && (
-              <button
-                type="button"
-                onClick={() => { setExportFrom(""); setExportTo(""); }}
-                className="text-sm text-muted-foreground hover:text-foreground self-center"
-              >
-                Clear
-              </button>
-            )}
+            <p className="basis-full text-xs text-muted-foreground sm:basis-auto">
+              The export uses the date range above — leave it blank to export every order.
+            </p>
+            {exportError && <p className="basis-full text-xs text-red-600">{exportError}</p>}
           </div>
-          <p className="text-xs text-muted-foreground mt-3">
-            Pick a month or set a custom range — leave both blank to export every order. The file lists one row per product line with quantity, unit price, line total, postage and order total.
-          </p>
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {loading ? (
           <div className="flex justify-center py-12"><Spinner /></div>
+        ) : loadError ? (
+          <div className="flex flex-col items-center gap-3 py-12">
+            <p className="text-center text-sm text-red-600">{loadError}</p>
+            <Button variant="secondary" onClick={fetchOrders}>Try again</Button>
+          </div>
         ) : orders.length === 0 ? (
-          <p className="text-center text-gray-400 py-12 text-sm">No orders yet. Create your first invoice.</p>
+          <p className="text-center text-gray-400 py-12 text-sm">
+            {hasFilters ? "No orders match your search or filters." : "No orders yet. Create your first invoice."}
+          </p>
         ) : (
           <div className="overflow-x-auto">
           <table className="w-full sm:min-w-[720px] text-sm table-cards">
@@ -235,12 +337,13 @@ export default function OrdersPage() {
         )}
       </div>
 
-      <Modal open={!!deleteTarget} title="Delete Order" onClose={() => setDeleteTarget(null)}>
+      <Modal open={!!deleteTarget} title="Delete Order" onClose={() => { setDeleteTarget(null); setDeleteError(""); }}>
         <p className="text-sm text-gray-600 mb-4">
           Are you sure you want to delete order <strong>#{deleteTarget?.id.slice(0, 8).toUpperCase()}</strong>?
         </p>
+        {deleteError && <p className="text-sm text-red-500 mb-3">{deleteError}</p>}
         <div className="flex gap-3 justify-end">
-          <Button variant="secondary" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+          <Button variant="secondary" onClick={() => { setDeleteTarget(null); setDeleteError(""); }}>Cancel</Button>
           <Button variant="danger" loading={deleting} onClick={handleDelete}>Delete</Button>
         </div>
       </Modal>

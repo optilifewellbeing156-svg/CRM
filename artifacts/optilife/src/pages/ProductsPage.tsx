@@ -10,7 +10,9 @@ import { useMe } from "@/hooks/useMe";
 import type { Product } from "@/types";
 
 export default function ProductsPage() {
-  const me = useMe();
+  const meState = useMe();
+  // Narrow away the "loading" sentinel so property access typechecks.
+  const me = meState === "loading" ? null : meState;
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -22,6 +24,8 @@ export default function ProductsPage() {
   const [stockTarget, setStockTarget] = useState<Product | null>(null);
   const [stockValue, setStockValue] = useState("");
   const [updatingStock, setUpdatingStock] = useState(false);
+  const [stockError, setStockError] = useState("");
+  const [deleteError, setDeleteError] = useState("");
 
   const isSuperAdmin = me?.role === "SUPER_ADMIN";
   const isAdmin = isSuperAdmin || me?.role === "ADMIN";
@@ -33,7 +37,7 @@ export default function ProductsPage() {
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
-    fetch("/api/products", { credentials: "include" })
+    fetch("/api/products?limit=1000", { credentials: "include" })
       .then((r) => { if (!r.ok) throw new Error("Failed"); return r.json(); })
       .then((data: Product[]) => { setError(false); setProducts(data); setLoading(false); })
       .catch(() => { setError(true); setLoading(false); });
@@ -53,22 +57,34 @@ export default function ProductsPage() {
   async function handleDelete() {
     if (!deleteTarget) return;
     setDeleting(true);
-    await fetch(`/api/products/${deleteTarget.id}`, { method: "DELETE", credentials: "include" });
-    setDeleteTarget(null);
+    setDeleteError("");
+    const res = await fetch(`/api/products/${deleteTarget.id}`, { method: "DELETE", credentials: "include" });
     setDeleting(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setDeleteError(data.error ?? "Failed to delete product");
+      return;
+    }
+    setDeleteTarget(null);
     fetchProducts();
   }
 
   async function handleStockUpdate() {
     if (!stockTarget) return;
     setUpdatingStock(true);
-    await fetch(`/api/products/${stockTarget.id}`, {
+    setStockError("");
+    const res = await fetch(`/api/products/${stockTarget.id}`, {
       method: "PUT",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ stockQuantity: Number(stockValue) }),
     });
     setUpdatingStock(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setStockError(data.error ?? "Failed to update stock");
+      return;
+    }
     setStockTarget(null);
     fetchProducts();
   }
@@ -174,17 +190,18 @@ export default function ProductsPage() {
         />
       </SlideOver>
 
-      <Modal open={!!deleteTarget} title="Delete Product" onClose={() => setDeleteTarget(null)}>
+      <Modal open={!!deleteTarget} title="Delete Product" onClose={() => { setDeleteTarget(null); setDeleteError(""); }}>
         <p className="text-sm text-gray-600 mb-4">
           Are you sure you want to delete <strong>{deleteTarget?.name}</strong>? This cannot be undone.
         </p>
+        {deleteError && <p className="text-sm text-red-500 mb-3">{deleteError}</p>}
         <div className="flex gap-3 justify-end">
           <Button variant="secondary" onClick={() => setDeleteTarget(null)}>Cancel</Button>
           <Button variant="danger" loading={deleting} onClick={handleDelete}>Delete</Button>
         </div>
       </Modal>
 
-      <Modal open={!!stockTarget} title="Change Stock" onClose={() => setStockTarget(null)}>
+      <Modal open={!!stockTarget} title="Change Stock" onClose={() => { setStockTarget(null); setStockError(""); }}>
         <p className="text-sm text-gray-600 mb-3">Update stock quantity for <strong>{stockTarget?.name}</strong>.</p>
         <input
           type="number"
@@ -193,8 +210,9 @@ export default function ProductsPage() {
           value={stockValue}
           onChange={(e) => setStockValue(e.target.value)}
         />
+        {stockError && <p className="text-sm text-red-500 mb-3">{stockError}</p>}
         <div className="flex gap-3 justify-end">
-          <Button variant="secondary" onClick={() => setStockTarget(null)}>Cancel</Button>
+          <Button variant="secondary" onClick={() => { setStockTarget(null); setStockError(""); }}>Cancel</Button>
           <Button loading={updatingStock} onClick={handleStockUpdate}>Update Stock</Button>
         </div>
       </Modal>

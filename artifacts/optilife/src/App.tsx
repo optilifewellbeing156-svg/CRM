@@ -16,6 +16,7 @@ import PurchasesPage from "@/pages/PurchasesPage";
 import SalesReportPage from "@/pages/SalesReportPage";
 import UsersPage from "@/pages/UsersPage";
 import SettingsPage from "@/pages/SettingsPage";
+import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const me = useMe();
@@ -53,12 +54,12 @@ function AppRouter() {
         <ProtectedRoute><NewOrderPage /></ProtectedRoute>
       </Route>
       <Route path="/orders/:id/edit">
-        {(params) => (
+        {(params: { id: string }) => (
           <ProtectedRoute><EditOrderPage id={params.id} /></ProtectedRoute>
         )}
       </Route>
       <Route path="/orders/:id">
-        {(params) => (
+        {(params: { id: string }) => (
           <ProtectedRoute><OrderDetailPage id={params.id} /></ProtectedRoute>
         )}
       </Route>
@@ -79,6 +80,10 @@ function AppRouter() {
       </Route>
       <Route path="/">
         <Redirect to="/dashboard" />
+      </Route>
+      {/* Catch-all: unknown URLs used to render a blank page. */}
+      <Route>
+        <ProtectedRoute><NotFound /></ProtectedRoute>
       </Route>
     </Switch>
   );

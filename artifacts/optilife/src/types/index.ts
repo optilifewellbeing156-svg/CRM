@@ -38,6 +38,8 @@ export type Order = {
   status?: string;
   isPaid?: boolean;
   paymentMethod?: string | null;
+  postage?: string | number | null;
+  note?: string | null;
   createdAt: string;
   customer?: { name: string };
   items?: OrderItem[];

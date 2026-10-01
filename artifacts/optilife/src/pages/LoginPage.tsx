@@ -31,6 +31,8 @@ export default function LoginPage() {
         clearMeCache();
         setLocation("/dashboard");
       }
+    } catch {
+      setError("Could not reach the server. Check your connection and try again.");
     } finally {
       setLoading(false);
     }

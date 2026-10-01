@@ -31,8 +31,10 @@ export function OrderForm({ order }: { order?: EditableOrder } = {}) {
   const [customerOpen, setCustomerOpen] = useState(false);
   const customerRef = useRef<HTMLDivElement>(null);
   const [createdById, setCreatedById] = useState(order?.createdById ?? "");
+  // en-CA formats as YYYY-MM-DD in *local* time; toISOString() is UTC and
+  // shows yesterday's date between midnight and 1am British Summer Time.
   const [invoiceDate, setInvoiceDate] = useState(() =>
-    (order ? new Date(order.createdAt) : new Date()).toISOString().slice(0, 10));
+    (order ? new Date(order.createdAt) : new Date()).toLocaleDateString("en-CA"));
   const [isPaid, setIsPaid] = useState(order?.isPaid ?? false);
   const [paymentMethod, setPaymentMethod] = useState(order?.paymentMethod ?? "");
   const [items, setItems] = useState<LineItem[]>(
@@ -66,8 +68,8 @@ export function OrderForm({ order }: { order?: EditableOrder } = {}) {
       .catch(() => []);
 
     Promise.all([
-      fetch("/api/customers", { credentials: "include" }).then((r) => r.json()),
-      fetch("/api/products", { credentials: "include" }).then((r) => r.json()),
+      fetch("/api/customers?limit=1000", { credentials: "include" }).then((r) => (r.ok ? r.json() : [])),
+      fetch("/api/products?limit=1000", { credentials: "include" }).then((r) => (r.ok ? r.json() : [])),
       fetchUsers,
     ]).then(([c, p, u]) => {
       setCustomers(Array.isArray(c) ? c : []);
@@ -332,7 +334,7 @@ export function OrderForm({ order }: { order?: EditableOrder } = {}) {
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
-                onClick={() => setRoundOff((Math.round(subtotal) - subtotal).toFixed(2))}
+                onClick={() => setRoundOff((Math.round(subtotal + postageValue) - (subtotal + postageValue)).toFixed(2))}
                 className="text-xs px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
                 title="Round total to the nearest whole pound"
               >

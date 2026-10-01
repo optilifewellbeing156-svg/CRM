@@ -10,7 +10,9 @@ import { useMe } from "@/hooks/useMe";
 import type { Customer } from "@/types";
 
 export default function CustomersPage() {
-  const me = useMe();
+  const meState = useMe();
+  // Narrow away the "loading" sentinel so property access typechecks.
+  const me = meState === "loading" ? null : meState;
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -19,6 +21,8 @@ export default function CustomersPage() {
   const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [historyCustomer, setHistoryCustomer] = useState<Customer | null>(null);
+  const [deleteError, setDeleteError] = useState("");
+  const [actionError, setActionError] = useState("");
 
   const isPrivileged = me?.role === "ADMIN" || me?.role === "SUPER_ADMIN";
   const hasManage = isPrivileged || me?.permissions?.includes("manage-customers");
@@ -32,9 +36,13 @@ export default function CustomersPage() {
 
   async function handleExport() {
     setExporting(true);
+    setActionError("");
     try {
       const res = await fetch("/api/export/customers", { credentials: "include" });
-      if (!res.ok) return;
+      if (!res.ok) {
+        setActionError("Export failed. Please try again.");
+        return;
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -47,13 +55,30 @@ export default function CustomersPage() {
     }
   }
 
+  // Server-side search (debounced): the search covers every customer in the
+  // book, not just the rows the page happened to load.
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
   const fetchCustomers = useCallback(async () => {
     setLoading(true);
-    const res = await fetch("/api/customers", { credentials: "include" });
+    setActionError("");
+    const params = new URLSearchParams({ limit: "1000" });
+    if (debouncedSearch) params.set("search", debouncedSearch);
+    const res = await fetch(`/api/customers?${params}`, { credentials: "include" });
+    if (!res.ok) {
+      setActionError("Failed to load customers.");
+      setCustomers([]);
+      setLoading(false);
+      return;
+    }
     const data = await res.json();
     setCustomers(Array.isArray(data) ? data : []);
     setLoading(false);
-  }, []);
+  }, [debouncedSearch]);
 
   useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
 
@@ -67,21 +92,34 @@ export default function CustomersPage() {
   async function handleDelete() {
     if (!deleteTarget) return;
     setDeleting(true);
-    await fetch(`/api/customers/${deleteTarget.id}`, { method: "DELETE", credentials: "include" });
-    setDeleteTarget(null);
+    setDeleteError("");
+    const res = await fetch(`/api/customers/${deleteTarget.id}`, { method: "DELETE", credentials: "include" });
     setDeleting(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setDeleteError(data.error ?? "Failed to delete customer");
+      return;
+    }
+    setDeleteTarget(null);
     fetchCustomers();
   }
 
   async function toggleStatus(c: Customer) {
-    const newStatus = c.status === "active" ? "dnc" : "active";
-    await fetch(`/api/customers/${c.id}/status`, {
+    setActionError("");
+    const res = await fetch(`/api/customers/${c.id}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ status: newStatus }),
+      body: JSON.stringify({ status: newStatusFor(c) }),
     });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setActionError(data.error ?? "Failed to update status");
+    }
     fetchCustomers();
+  }
+  function newStatusFor(c: Customer) {
+    return c.status === "active" ? "dnc" : "active";
   }
 
   return (
@@ -102,6 +140,8 @@ export default function CustomersPage() {
         </div>
       </div>
 
+      {actionError && <p className="mb-4 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{actionError}</p>}
+
       <div className="bg-white rounded-xl border border-gray-200">
         <div className="p-4 border-b">
           <input
@@ -114,7 +154,9 @@ export default function CustomersPage() {
         {loading ? (
           <div className="flex justify-center py-12"><Spinner /></div>
         ) : filtered.length === 0 ? (
-          <p className="text-center text-gray-400 py-12 text-sm">No customers found. Add your first customer.</p>
+          <p className="text-center text-gray-400 py-12 text-sm">
+            {search ? "No customers match your search." : "No customers found. Add your first customer."}
+          </p>
         ) : (
           <div className="overflow-x-auto">
           <table className="w-full sm:min-w-[720px] text-sm table-cards">
@@ -186,10 +228,11 @@ export default function CustomersPage() {
         <CustomerForm initial={editing} onSuccess={() => { setSlideOpen(false); fetchCustomers(); }} />
       </SlideOver>
 
-      <Modal open={!!deleteTarget} title="Delete Customer" onClose={() => setDeleteTarget(null)}>
+      <Modal open={!!deleteTarget} title="Delete Customer" onClose={() => { setDeleteTarget(null); setDeleteError(""); }}>
         <p className="text-sm text-gray-600 mb-4">
           Are you sure you want to delete <strong>{deleteTarget?.name}</strong>?
         </p>
+        {deleteError && <p className="text-sm text-red-500 mb-3">{deleteError}</p>}
         <div className="flex gap-3 justify-end">
           <Button variant="secondary" onClick={() => setDeleteTarget(null)}>Cancel</Button>
           <Button variant="danger" loading={deleting} onClick={handleDelete}>Delete</Button>

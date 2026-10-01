@@ -35,8 +35,12 @@ export function ProductForm({ initial, onSuccess }: ProductFormProps) {
           sku,
           costPrice: Number(costPrice),
           sellingPrice: Number(sellingPrice),
-          stockQuantity: Number(stockQuantity),
-          lowStockThreshold: Number(lowStockThreshold) || 10,
+          // Stock is only set on create. On edit it changes through orders,
+          // purchases and Change Stock — resending the number from when the
+          // form opened would overwrite sales made in the meantime.
+          ...(initial ? {} : { stockQuantity: Number(stockQuantity) }),
+          // "" falls back to 10; an explicit 0 ("never flag") is kept.
+          lowStockThreshold: lowStockThreshold === "" ? 10 : Number(lowStockThreshold),
         }),
       });
       const data = await res.json();
@@ -76,13 +80,23 @@ export function ProductForm({ initial, onSuccess }: ProductFormProps) {
           required
         />
       </div>
-      <Input
-        label="Stock Quantity"
-        type="number"
-        value={stockQuantity}
-        onChange={(e) => setStockQuantity(e.target.value)}
-        required
-      />
+      {initial ? (
+        <div>
+          <Input label="Stock Quantity" type="number" value={stockQuantity} disabled />
+          <p className="text-xs text-gray-400 mt-1">
+            Stock changes through orders, purchases and the Change Stock action, so edits here don&apos;t touch it.
+          </p>
+        </div>
+      ) : (
+        <Input
+          label="Stock Quantity"
+          type="number"
+          min="0"
+          value={stockQuantity}
+          onChange={(e) => setStockQuantity(e.target.value)}
+          required
+        />
+      )}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5">
           <Bell size={13} className="text-amber-500" />
