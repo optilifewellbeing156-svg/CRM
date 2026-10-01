@@ -3,6 +3,15 @@ import { verifyToken, COOKIE_NAME } from "./auth";
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
+/**
+ * Express 5 types route params as `string | string[]` (repeatable params).
+ * No route here declares a repeatable param, so normalize to a single string.
+ */
+export function param(req: Request, name: string): string {
+  const v = (req.params as Record<string, string | string[] | undefined>)[name];
+  return Array.isArray(v) ? v[0] : (v ?? "");
+}
+
 export interface AuthRequest extends Request {
   auth?: {
     userId: string;
@@ -23,9 +32,16 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  // Verify the user still exists and is active (catches deactivations within token lifetime)
+  // The token only proves identity. Role and permissions are re-read from the
+  // database on every request, so deactivations, demotions and permission
+  // revocations take effect immediately instead of when the 7-day token expires.
   const rows = await db
-    .select({ isActive: usersTable.isActive })
+    .select({
+      isActive: usersTable.isActive,
+      username: usersTable.username,
+      role: usersTable.role,
+      permissions: usersTable.permissions,
+    })
     .from(usersTable)
     .where(eq(usersTable.id, payload.userId))
     .limit(1);
@@ -33,7 +49,12 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  req.auth = payload;
+  req.auth = {
+    userId: payload.userId,
+    username: rows[0].username,
+    role: rows[0].role,
+    permissions: rows[0].permissions ?? [],
+  };
   next();
 }
 

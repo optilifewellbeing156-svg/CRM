@@ -32,6 +32,12 @@ router.post("/auth/login", async (req: Request, res: Response) => {
       return;
     }
 
+    // After the password check, so this never leaks which usernames exist.
+    if (!user.isActive) {
+      res.status(403).json({ error: "Your account has been deactivated. Please contact an administrator." });
+      return;
+    }
+
     const token = await signToken({
       userId: user.id,
       username: user.username,
@@ -78,17 +84,24 @@ router.post("/auth/signup", async (req: Request, res: Response) => {
     // Postgres advisory lock so two concurrent first-signups can't both
     // observe count=0 and both become ADMIN. The lock is auto-released
     // at transaction end.
+    // Signup exists only to bootstrap the very first account of a fresh
+    // install. Once any user exists, accounts are created by an admin on the
+    // Users page — an open signup endpoint would let anyone on the internet
+    // create accounts in a live system.
     const user = await db.transaction(async (tx) => {
       await tx.execute(sql`SELECT pg_advisory_xact_lock(7331247001)`);
       const countRes = await tx.select({ c: sql<number>`count(*)::int` }).from(usersTable);
       const isFirstUser = (countRes[0]?.c ?? 0) === 0;
+      if (!isFirstUser) {
+        throw Object.assign(new Error("Signup is disabled. Ask an administrator to create your account."), { status: 403 });
+      }
       const [created] = await tx.insert(usersTable).values({
         username,
         password: hashed,
-        role: isFirstUser ? "ADMIN" : "USER",
+        role: "ADMIN",
         isActive: true,
         commissionRate: "0",
-        permissions: isFirstUser ? ALL_PERMISSIONS : [],
+        permissions: ALL_PERMISSIONS,
       }).returning({ id: usersTable.id, username: usersTable.username, role: usersTable.role, permissions: usersTable.permissions });
       return created;
     });
@@ -105,6 +118,10 @@ router.post("/auth/signup", async (req: Request, res: Response) => {
 
     res.status(201).json({ success: true });
   } catch (e: any) {
+    if (e?.status === 403) {
+      res.status(403).json({ error: e.message });
+      return;
+    }
     // Drizzle wraps pg errors as _DrizzleQueryError; the underlying pg error is on `cause`.
     const pgCode = e?.code ?? e?.cause?.code;
     if (pgCode === "23505") {

@@ -35,8 +35,11 @@ router.get("/dashboard", requirePermission("dashboard"), async (req: AuthRequest
     const prevFrom = new Date(from.getTime() - span);
 
     const ownerCond = privileged ? undefined : eq(ordersTable.createdById, userId);
+    // Cancelled and refunded orders are excluded, as on the Sales Report —
+    // the two pages used to disagree on revenue.
+    const notReversed = sql`coalesce(${ordersTable.status}, '') NOT IN ('CANCELLED', 'REFUNDED')`;
     const inWindow = (a: Date, b: Date): SQL =>
-      and(gte(ordersTable.createdAt, a), lt(ordersTable.createdAt, b), ownerCond)!;
+      and(gte(ordersTable.createdAt, a), lt(ordersTable.createdAt, b), notReversed, ownerCond)!;
 
     const totals = (a: Date, b: Date) =>
       db
@@ -85,7 +88,7 @@ router.get("/dashboard", requirePermission("dashboard"), async (req: AuthRequest
         SELECT id, name, sku, stock_quantity AS "stockQuantity", low_stock_threshold AS "lowStockThreshold",
                cost_price AS "costPrice", selling_price AS "sellingPrice", created_at AS "createdAt"
         FROM products
-        WHERE stock_quantity < low_stock_threshold
+        WHERE stock_quantity <= low_stock_threshold
         ORDER BY stock_quantity ASC
       `),
       db

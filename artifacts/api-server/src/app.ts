@@ -8,6 +8,12 @@ import { logger } from "./lib/logger";
 
 const app: Express = express();
 
+// Production traffic arrives through one proxy hop (the Netlify redirect in
+// front of Render). Without this, every client shares the proxy's IP and the
+// login rate limit below becomes one company-wide counter: 20 failed logins
+// from anyone would lock out everybody.
+app.set("trust proxy", 1);
+
 app.use(
   pinoHttp({
     logger,

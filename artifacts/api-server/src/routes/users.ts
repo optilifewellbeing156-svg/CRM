@@ -3,7 +3,7 @@ import { db } from "@workspace/db";
 import { usersTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { hashPassword } from "../lib/auth";
-import { requireAdmin, type AuthRequest } from "../lib/middleware";
+import { requireAdmin, param, type AuthRequest } from "../lib/middleware";
 
 const router = Router();
 
@@ -70,8 +70,24 @@ router.post("/users", requireAdmin, requireSuperAdmin, async (req: AuthRequest, 
 
 router.put("/users/:id", requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
+    const id = param(req, "id");
     const isSuperAdmin = req.auth!.role === "SUPER_ADMIN";
     const { username, role, commissionRate, isActive, permissions, password } = req.body;
+
+    // An ADMIN may manage USER accounts and their own; only the SUPER_ADMIN
+    // can touch other admin-level accounts. Without this, any admin could
+    // reset the owner's password and take over the owner account.
+    if (!isSuperAdmin && id !== req.auth!.userId) {
+      const target = await db.select({ role: usersTable.role }).from(usersTable).where(eq(usersTable.id, id)).limit(1);
+      if (!target[0]) {
+        res.status(404).json({ error: "Not found" });
+        return;
+      }
+      if (target[0].role !== "USER") {
+        res.status(403).json({ error: "Only the Super Admin can modify admin accounts" });
+        return;
+      }
+    }
 
     if (password !== undefined && password !== "" && password.length < 12) {
       res.status(400).json({ error: "Password must be at least 12 characters" });
@@ -85,7 +101,7 @@ router.put("/users/:id", requireAdmin, async (req: AuthRequest, res: Response) =
     }
 
     // Self-protection guards
-    if (req.params.id === req.auth!.userId) {
+    if (id === req.auth!.userId) {
       if (isActive === false) {
         res.status(400).json({ error: "You cannot deactivate your own account" });
         return;
@@ -110,7 +126,7 @@ router.put("/users/:id", requireAdmin, async (req: AuthRequest, res: Response) =
 
     const [user] = await db.update(usersTable)
       .set(updateData)
-      .where(eq(usersTable.id, req.params.id as string))
+      .where(eq(usersTable.id, id))
       .returning(SELECTED_FIELDS);
 
     if (!user) {
@@ -131,24 +147,30 @@ router.put("/users/:id", requireAdmin, async (req: AuthRequest, res: Response) =
 // Only SUPER_ADMIN can delete users
 router.delete("/users/:id", requireAdmin, requireSuperAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    if (req.params.id === req.auth!.userId) {
+    const id = param(req, "id");
+    if (id === req.auth!.userId) {
       res.status(400).json({ error: "You cannot delete your own account" });
       return;
     }
 
-    const targetRows = await db.select({ role: usersTable.role }).from(usersTable).where(eq(usersTable.id, req.params.id as string)).limit(1);
+    const targetRows = await db.select({ role: usersTable.role }).from(usersTable).where(eq(usersTable.id, id)).limit(1);
     if (!targetRows[0]) {
       res.status(404).json({ error: "Not found" });
       return;
     }
 
-    const deleted = await db.delete(usersTable).where(eq(usersTable.id, req.params.id as string)).returning();
+    const deleted = await db.delete(usersTable).where(eq(usersTable.id, id)).returning();
     if (!deleted[0]) {
       res.status(404).json({ error: "Not found" });
       return;
     }
     res.json({ success: true });
-  } catch (e) {
+  } catch (e: any) {
+    const pgCode = e?.code ?? e?.cause?.code;
+    if (pgCode === "23503") {
+      res.status(409).json({ error: "This user has created orders or customers and cannot be deleted. Deactivate the account instead." });
+      return;
+    }
     req.log.error(e);
     res.status(500).json({ error: "Internal server error" });
   }

@@ -1,19 +1,21 @@
 import { Router, Response } from "express";
 import React from "react";
-import { renderToBuffer } from "@react-pdf/renderer";
+import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 import { db } from "@workspace/db";
 import { ordersTable, orderItemsTable, productsTable, customersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { InvoicePDF } from "../lib/invoice-pdf";
-import { requireAnyPermission, type AuthRequest } from "../lib/middleware";
+import { requireAnyPermission, isPrivileged, param, type AuthRequest } from "../lib/middleware";
 import { getInvoiceShowVat, getCompanyDetails } from "../lib/settings";
 
 const router = Router();
 
 router.get("/orders/:id/pdf", requireAnyPermission("orders", "create-orders", "edit-orders"), async (req: AuthRequest, res: Response) => {
   try {
+    const id = param(req, "id");
     const orders = await db.select({
       id: ordersTable.id,
+      createdById: ordersTable.createdById,
       totalAmount: ordersTable.totalAmount,
       createdAt: ordersTable.createdAt,
       status: ordersTable.status,
@@ -27,10 +29,12 @@ router.get("/orders/:id/pdf", requireAnyPermission("orders", "create-orders", "e
     })
       .from(ordersTable)
       .leftJoin(customersTable, eq(ordersTable.customerId, customersTable.id))
-      .where(eq(ordersTable.id, req.params.id))
+      .where(eq(ordersTable.id, id))
       .limit(1);
 
-    if (!orders[0]) {
+    // Same scope as the orders list: a non-privileged user can only pull the
+    // invoices of orders they created.
+    if (!orders[0] || (!isPrivileged(req.auth!.role) && orders[0].createdById !== req.auth!.userId)) {
       res.status(404).json({ error: "Not found" });
       return;
     }
@@ -44,7 +48,7 @@ router.get("/orders/:id/pdf", requireAnyPermission("orders", "create-orders", "e
     })
       .from(orderItemsTable)
       .leftJoin(productsTable, eq(orderItemsTable.productId, productsTable.id))
-      .where(eq(orderItemsTable.orderId, req.params.id));
+      .where(eq(orderItemsTable.orderId, id));
 
     const order = {
       id: o.id,
@@ -69,7 +73,11 @@ router.get("/orders/:id/pdf", requireAnyPermission("orders", "create-orders", "e
     };
 
     const [showVat, company] = await Promise.all([getInvoiceShowVat(), getCompanyDetails()]);
-    const buffer = await renderToBuffer(React.createElement(InvoicePDF, { order, showVat, company }));
+    // renderToBuffer's signature wants ReactElement<DocumentProps>; InvoicePDF
+    // renders a <Document> but its own props differ, so assert the element type.
+    const buffer = await renderToBuffer(
+      React.createElement(InvoicePDF, { order, showVat, company }) as React.ReactElement<DocumentProps>
+    );
 
     res.set({
       "Content-Type": "application/pdf",

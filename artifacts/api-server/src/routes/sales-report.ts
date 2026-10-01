@@ -85,7 +85,10 @@ router.get("/sales-report", requirePermission("sales-report"), async (req: AuthR
 
     const totalRevenue = orders.reduce((sum, o) => sum + activeAmount(o), 0);
     const totalOrders = orders.length;
-    const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+    const activeOrderCount = orders.filter(o => !isReversed(o)).length;
+    // Averaged over the orders that actually contribute revenue; dividing by a
+    // count that includes reversed orders understates it.
+    const avgOrderValue = activeOrderCount > 0 ? totalRevenue / activeOrderCount : 0;
 
     const reversedOrders = orders.filter(isReversed);
     const cancelledRefundedAmount = reversedOrders.reduce((sum, o) => sum + Number(o.totalAmount), 0);
@@ -93,6 +96,7 @@ router.get("/sales-report", requirePermission("sales-report"), async (req: AuthR
 
     const productMap = new Map<string, { name: string; unitsSold: number; revenue: number }>();
     for (const order of orders) {
+      if (isReversed(order)) continue; // cancelled units were never sold
       const items = itemsByOrder.get(order.id) ?? [];
       for (const item of items) {
         const key = item.productId;
@@ -117,6 +121,7 @@ router.get("/sales-report", requirePermission("sales-report"), async (req: AuthR
 
     for (const order of orders) {
       if (!order.createdById || !order.userUsername) continue;
+      if (isReversed(order)) continue; // keep per-user counts consistent with their sales
       const rate = Number(order.userCommissionRate ?? 0);
       const amount = activeAmount(order);
       const existing = userMap.get(order.createdById) ?? {

@@ -86,6 +86,11 @@ export function InvoicePDF({ order, showVat = false, company = COMPANY_DEFAULT }
   const subTotal = order.items.reduce((sum, item) => sum + Number(item.price) * Number(item.quantity), 0);
   const postage = Number(order.postage) || 0;
   const roundOff = Number(order.totalAmount) - subTotal - postage;
+  // "VAT (Included)" is informational: prices are VAT-inclusive, so the VAT
+  // portion of the goods total is total * rate/(100+rate) at the UK standard
+  // rate. Previously this line was hard-coded to £0.00.
+  const VAT_RATE = 20;
+  const includedVat = subTotal * (VAT_RATE / (100 + VAT_RATE));
   const date = new Date(order.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
   const invoiceNo = order.id.slice(0, 8).toUpperCase();
 
@@ -155,8 +160,8 @@ export function InvoicePDF({ order, showVat = false, company = COMPANY_DEFAULT }
           </View>
           {showVat ? (
             <View style={s.totalLine}>
-              <Text style={s.totalLineLabel}>VAT (Included)</Text>
-              <Text style={s.totalLineValue}>£0.00</Text>
+              <Text style={s.totalLineLabel}>VAT (Included, {VAT_RATE}%)</Text>
+              <Text style={s.totalLineValue}>£{includedVat.toFixed(2)}</Text>
             </View>
           ) : null}
           <View style={s.totalLine}>
