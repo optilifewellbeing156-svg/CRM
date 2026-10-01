@@ -41,7 +41,7 @@ async function activeCooldown(customerId: string, excludeOrderId?: string) {
     FROM orders
     WHERE customer_id = ${customerId}
       AND created_at > now() - interval '25 days'
-      AND coalesce(status, '') NOT IN ('CANCELLED', 'REFUNDED')
+      AND (status IS NULL OR status::text NOT IN ('CANCELLED', 'REFUNDED'))
       ${excludeOrderId ? sql`AND id <> ${excludeOrderId}` : sql``}
     ORDER BY created_at DESC
     LIMIT 1

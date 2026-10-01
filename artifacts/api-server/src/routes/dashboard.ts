@@ -37,7 +37,7 @@ router.get("/dashboard", requirePermission("dashboard"), async (req: AuthRequest
     const ownerCond = privileged ? undefined : eq(ordersTable.createdById, userId);
     // Cancelled and refunded orders are excluded, as on the Sales Report —
     // the two pages used to disagree on revenue.
-    const notReversed = sql`coalesce(${ordersTable.status}, '') NOT IN ('CANCELLED', 'REFUNDED')`;
+    const notReversed = sql`(${ordersTable.status} IS NULL OR ${ordersTable.status}::text NOT IN ('CANCELLED', 'REFUNDED'))`;
     const inWindow = (a: Date, b: Date): SQL =>
       and(gte(ordersTable.createdAt, a), lt(ordersTable.createdAt, b), notReversed, ownerCond)!;
 
